@@ -1,6 +1,6 @@
 [project]
 name = "bq-readonly-mcp"
-version = "0.1.1"
+version = "0.1.2"
 description = "Read-only BigQuery MCP server with auto-LIMIT, dry-run cost guard, and ADC auth — for Claude, Cursor, Windsurf, Copilot, and other MCP clients."
 readme = "README.md"
 requires-python = ">=3.11"

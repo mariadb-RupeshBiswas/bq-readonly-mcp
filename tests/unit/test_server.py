@@ -4,7 +4,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from bq_readonly_mcp.config import Config
-from bq_readonly_mcp.models import DatasetInfo
 from bq_readonly_mcp.server import _warn_if_no_allowlist, build_tool_registry, dispatch_tool
 
 
@@ -22,10 +21,21 @@ def _make_cfg(allowed_datasets=None):
 
 
 def _make_bq(datasets=None):
+    """Mock BQClient where bq.client.list_datasets() returns DatasetListItem-like
+    mocks. The startup warning uses this fast path (single API call, no per-dataset
+    roundtrips) — see _warn_if_no_allowlist in server.py.
+    """
     bq = MagicMock()
-    bq.list_datasets.return_value = [
-        DatasetInfo(dataset_id=d, location="US") for d in (datasets or [])
-    ]
+    list_items = []
+    for name in datasets or []:
+        item = MagicMock()
+        item.dataset_id = name
+        list_items.append(item)
+    bq.client.list_datasets.return_value = list_items
+    # Sanity: ensure the slow path is NOT used by the warning code (regression for #4)
+    bq.list_datasets.side_effect = AssertionError(
+        "warning code must not call bq.list_datasets() — use bq.client.list_datasets() instead"
+    )
     return bq
 
 
@@ -85,9 +95,25 @@ def test_warn_silent_when_allowlist_set(capsys):
 def test_warn_handles_list_datasets_error(capsys):
     cfg = _make_cfg(allowed_datasets=None)
     bq = MagicMock()
-    bq.list_datasets.side_effect = RuntimeError("network failure")
+    bq.client.list_datasets.side_effect = RuntimeError("network failure")
     # Should not raise; logs a warning instead
     _warn_if_no_allowlist(cfg, bq)
+
+
+def test_warn_does_not_call_slow_per_dataset_path(capsys):
+    """Regression for v0.1.2: warning must use the fast names-only path.
+
+    bq.list_datasets() does N+1 API calls (one to list, one per dataset);
+    bq.client.list_datasets() does just one paginated call. The Windsurf
+    timeout bug came from the warning calling the slow one.
+    """
+    cfg = _make_cfg(allowed_datasets=None)
+    bq = _make_bq(["a", "b", "c"])
+    _warn_if_no_allowlist(cfg, bq)
+    # Must NOT have touched the slow path (mock raises if accessed)
+    bq.list_datasets.assert_not_called()
+    # MUST have used the fast path
+    bq.client.list_datasets.assert_called_once()
 
 
 # --- dispatch_tool tests ---
