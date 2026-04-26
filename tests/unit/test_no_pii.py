@@ -196,6 +196,8 @@ ALLOWED = {
     "sister-project",
     "term-missing",
     "double-injection",
+    "raw-string-escape",
+    "non-empty",
     "uv-cache",
     "egg-info",
     "single-process",

@@ -63,3 +63,21 @@ def test_handles_backslash_escape_inside_string():
 def test_handles_backslash_escape_inside_double_quoted():
     sql = r'SELECT "foo\"bar" AS x'
     assert strip_comments(sql) == sql
+
+
+def test_raw_string_does_not_honor_backslash_escape():
+    # In a raw string, \" does NOT escape; the second " closes the string
+    sql = r'SELECT r"foo\" FROM t'  # second " closes string -> ' FROM t' is outside
+    out = strip_comments(sql)
+    # The literal stays intact; outside content unchanged
+    assert "FROM t" in out
+
+
+def test_raw_string_lowercase_r():
+    sql = r"SELECT r'foo\' FROM t"  # raw single-quoted; \ is literal, ' closes
+    assert strip_comments(sql) == sql  # no comments, no change
+
+
+def test_raw_string_uppercase_R():
+    sql = r'SELECT R"hello" FROM t'
+    assert strip_comments(sql) == sql

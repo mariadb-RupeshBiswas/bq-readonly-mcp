@@ -48,3 +48,11 @@ def test_backslash_escape_inside_string_does_not_close_early():
     out = mask_string_literals(r"SELECT 'foo\'bar' AS x")
     # Whole literal masked; AS is outside, so it stays
     assert " AS x" in out
+
+
+def test_raw_string_bypass_blocked():
+    # The famous bypass query — must be detected as multi-statement
+    out = mask_string_literals(r'SELECT r"foo\"; DROP TABLE t; --" FROM s')
+    # The raw string ends at the second " (after foo\), then "; DROP TABLE t; --" is OUTSIDE
+    # mask should leave outside content unmasked, so DROP, TABLE, ;, --, etc are visible
+    assert "DROP" in out or ";" in out  # at least one keyword leaked outside the raw string

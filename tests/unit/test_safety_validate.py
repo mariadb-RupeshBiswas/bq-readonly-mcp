@@ -77,3 +77,9 @@ def test_backticked_path_with_reserved_word_allowed():
 def test_real_bigquery_public_data_query_allowed():
     # The canonical "every real BigQuery query" shape with backticked path
     validate_select_query("SELECT word FROM `bigquery-public-data.samples.shakespeare`")
+
+
+def test_raw_string_smuggle_dml_rejected():
+    """Validator must reject DML smuggled via raw-string-escape confusion."""
+    with pytest.raises(SafetyError):
+        validate_select_query(r'SELECT r"foo\"; DROP TABLE t; --" FROM s')

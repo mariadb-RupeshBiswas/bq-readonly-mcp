@@ -10,6 +10,27 @@ from __future__ import annotations
 import re
 
 
+def _preceding_is_raw_prefix(out: list[str]) -> bool:
+    """True if the last non-empty output character is an r/R prefix (BigQuery raw string).
+
+    Handles r/R alone and combinations rb/Rb/bR/BR (raw bytes). The prefix must
+    NOT be the tail of a longer identifier — a plain word character before it means
+    it's not a standalone prefix.
+    """
+    # Collect the prefix letters immediately before the opening quote
+    idx = len(out) - 1
+    prefix = ""
+    while idx >= 0 and out[idx].lower() in ("r", "b"):
+        prefix = out[idx] + prefix
+        idx -= 1
+    if not prefix:
+        return False
+    # If the char before the prefix is an identifier char, it's part of a word (not a prefix)
+    if idx >= 0 and (out[idx].isalnum() or out[idx] == "_"):
+        return False
+    return "r" in prefix.lower()
+
+
 def strip_comments(sql: str) -> str:
     """Remove SQL line and block comments while preserving string literals.
 
@@ -17,6 +38,9 @@ def strip_comments(sql: str) -> str:
     double-, or backtick-quoted region (with backslash-escape and
     doubled-quote-escape support). Outside strings, `--` runs to end-of-line
     and `/* ... */` is replaced with a single space.
+
+    Raw strings (r"..." / r'...') do not honor backslash escapes; `\\` is a
+    literal char and does not prevent the next quote from closing the string.
     """
     out: list[str] = []
     i = 0
@@ -24,6 +48,7 @@ def strip_comments(sql: str) -> str:
     in_single = False
     in_double = False
     in_backtick = False
+    is_raw_str = False  # True when inside an r"..." or r'...' raw string
 
     while i < n:
         c = sql[i]
@@ -31,7 +56,7 @@ def strip_comments(sql: str) -> str:
         # Inside a single-quoted string: pass through, handle backslash and doubled-quote escape
         if in_single:
             out.append(c)
-            if c == "\\":
+            if not is_raw_str and c == "\\":
                 # Backslash consumes the next char verbatim — it cannot close the string
                 if i + 1 < n:
                     out.append(sql[i + 1])
@@ -45,13 +70,14 @@ def strip_comments(sql: str) -> str:
                     i += 2
                     continue
                 in_single = False
+                is_raw_str = False
             i += 1
             continue
 
         # Inside a double-quoted string: same logic mirrored
         if in_double:
             out.append(c)
-            if c == "\\":
+            if not is_raw_str and c == "\\":
                 if i + 1 < n:
                     out.append(sql[i + 1])
                     i += 2
@@ -64,6 +90,7 @@ def strip_comments(sql: str) -> str:
                     i += 2
                     continue
                 in_double = False
+                is_raw_str = False
             i += 1
             continue
 
@@ -84,11 +111,13 @@ def strip_comments(sql: str) -> str:
 
         # Outside any string: detect string openers, line comments, block comments
         if c == "'":
+            is_raw_str = _preceding_is_raw_prefix(out)
             in_single = True
             out.append(c)
             i += 1
             continue
         if c == '"':
+            is_raw_str = _preceding_is_raw_prefix(out)
             in_double = True
             out.append(c)
             i += 1
@@ -126,6 +155,9 @@ def mask_string_literals(sql: str) -> str:
     string literal (or a reserved word inside a backtick identifier like
     `proj.ds.UPDATE_LOG`) does not trigger DML/DDL rejection. Preserves the
     surrounding quote characters and overall length structure.
+
+    Raw strings (r"..." / r'...') do not honor backslash escapes — same rule
+    as strip_comments, so both functions agree on string boundaries.
     """
     out: list[str] = []
     i = 0
@@ -133,13 +165,14 @@ def mask_string_literals(sql: str) -> str:
     in_single = False
     in_double = False
     in_backtick = False
+    is_raw_str = False  # True when inside an r"..." or r'...' raw string
 
     while i < n:
         c = sql[i]
 
         # Inside single-quoted string: replace contents with X, handle backslash and doubled-quote
         if in_single:
-            if c == "\\":
+            if not is_raw_str and c == "\\":
                 # Backslash escape: consume two chars as X X so the quote after \ isn't the closer
                 out.append("X")
                 if i + 1 < n:
@@ -155,6 +188,7 @@ def mask_string_literals(sql: str) -> str:
                     continue
                 out.append("'")
                 in_single = False
+                is_raw_str = False
                 i += 1
                 continue
             out.append("X")
@@ -163,7 +197,7 @@ def mask_string_literals(sql: str) -> str:
 
         # Inside double-quoted string: same logic mirrored
         if in_double:
-            if c == "\\":
+            if not is_raw_str and c == "\\":
                 out.append("X")
                 if i + 1 < n:
                     out.append("X")
@@ -178,6 +212,7 @@ def mask_string_literals(sql: str) -> str:
                     continue
                 out.append('"')
                 in_double = False
+                is_raw_str = False
                 i += 1
                 continue
             out.append("X")
@@ -205,11 +240,13 @@ def mask_string_literals(sql: str) -> str:
 
         # Outside any string: detect openers and pass through
         if c == "'":
+            is_raw_str = _preceding_is_raw_prefix(out)
             in_single = True
             out.append(c)
             i += 1
             continue
         if c == '"':
+            is_raw_str = _preceding_is_raw_prefix(out)
             in_double = True
             out.append(c)
             i += 1
