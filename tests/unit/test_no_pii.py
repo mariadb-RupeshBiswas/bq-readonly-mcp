@@ -295,10 +295,13 @@ EXTRA_FALSE_POSITIVES = {
     "view-transitive",
     "wall-clock",
     "your-checkout",
-    # Short git SHAs referenced in audit doc (any [a-f0-9]{7,8} pattern)
+    # Short git SHAs referenced in audit doc
     "a1bae83",
     "a21738f",
     "d6e04d4",
+    # Self-referential tokens introduced by this allowlist itself
+    "a-f0-9",
+    "audit-narrative",
 }
 
 
