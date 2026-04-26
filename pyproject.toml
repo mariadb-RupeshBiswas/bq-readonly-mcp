@@ -1,6 +1,6 @@
 [project]
 name = "bq-readonly-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "Read-only BigQuery MCP server with auto-LIMIT, dry-run cost guard, and ADC auth — for Claude, Cursor, Windsurf, Copilot, and other MCP clients."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -51,6 +51,15 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/bq_readonly_mcp"]
+
+[tool.hatch.build.targets.sdist]
+# Keep planning artifacts on GitHub for design transparency, but don't ship
+# them in the PyPI distribution — they're not useful in `pip install`.
+exclude = [
+    "docs/superpowers/",
+    "tests/integration/",
+    ".github/",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

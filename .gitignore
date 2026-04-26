@@ -39,3 +39,7 @@ htmlcov/
 *.json.key
 service-account*.json
 application_default_credentials.json
+
+# AI session context — kept locally, not published
+CLAUDE.md
+.claude/
