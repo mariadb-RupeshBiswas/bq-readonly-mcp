@@ -7,6 +7,7 @@ from bq_readonly_mcp.models import (
     DescribeColumnsInput,
     EstimateQueryCostInput,
     GetTableInput,
+    GetTableMetadataInput,
     ListDatasetsInput,
     ListTablesInput,
     PartitioningInfo,
@@ -91,6 +92,19 @@ def test_table_metadata_optional_partitioning():
 def test_partitioning_info_validates_type():
     p = PartitioningInfo(type="DAY", column="ts", expiration_ms=None)
     assert p.type == "DAY"
+
+
+def test_dataset_id_pattern_rejects_injection():
+    with pytest.raises(ValidationError):
+        ListTablesInput(dataset_id="foo`; DROP TABLE x;--")
+    with pytest.raises(ValidationError):
+        GetTableInput(dataset_id="ok", table_id="bad`)id")
+
+
+def test_dataset_id_pattern_accepts_valid_identifiers():
+    ListTablesInput(dataset_id="my_dataset")
+    GetTableMetadataInput(dataset_id="ds1", table_id="tbl_name")
+    DescribeColumnsInput(dataset_id="_private", table_id="Table123")
 
 
 def test_query_result_round_trip():

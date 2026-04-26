@@ -11,6 +11,11 @@ class _StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+# BigQuery dataset and table IDs: letters, digits, underscores only.
+# Must start with a letter or underscore; no hyphens or special chars.
+_BQ_IDENTIFIER_PATTERN = r"^[A-Za-z_][A-Za-z0-9_]*$"
+
+
 # --- Tool inputs ---
 
 
@@ -19,23 +24,23 @@ class ListDatasetsInput(_StrictModel):
 
 
 class ListTablesInput(_StrictModel):
-    dataset_id: str = Field(min_length=1)
+    dataset_id: str = Field(min_length=1, pattern=_BQ_IDENTIFIER_PATTERN)
     name_contains: str | None = None
 
 
 class GetTableMetadataInput(_StrictModel):
-    dataset_id: str = Field(min_length=1)
-    table_id: str = Field(min_length=1)
+    dataset_id: str = Field(min_length=1, pattern=_BQ_IDENTIFIER_PATTERN)
+    table_id: str = Field(min_length=1, pattern=_BQ_IDENTIFIER_PATTERN)
 
 
 class DescribeColumnsInput(_StrictModel):
-    dataset_id: str = Field(min_length=1)
-    table_id: str = Field(min_length=1)
+    dataset_id: str = Field(min_length=1, pattern=_BQ_IDENTIFIER_PATTERN)
+    table_id: str = Field(min_length=1, pattern=_BQ_IDENTIFIER_PATTERN)
 
 
 class GetTableInput(_StrictModel):
-    dataset_id: str = Field(min_length=1)
-    table_id: str = Field(min_length=1)
+    dataset_id: str = Field(min_length=1, pattern=_BQ_IDENTIFIER_PATTERN)
+    table_id: str = Field(min_length=1, pattern=_BQ_IDENTIFIER_PATTERN)
     sample_rows: PositiveInt | None = None
 
 
