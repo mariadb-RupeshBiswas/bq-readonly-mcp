@@ -24,7 +24,10 @@ This is a public repo. The author is fine with their email being public, but **n
 - ❌ No internal hostnames, slack channels, Jira/Confluence URLs
 - ❌ No real spreadsheet IDs or file paths that reveal internal structure
 - ✅ All examples use `your-project-id`, `your_dataset`, or `bigquery-public-data.*`
-- ✅ The author's email (`rupesh.biswas@mariadb.com`) is the only identifying string allowed
+- ✅ Two strings are allowed to contain "mariadb" — and only these two:
+  1. The author's email (`rupesh.biswas@mariadb.com`)
+  2. The GitHub repo URL (`github.com/mariadb-RupeshBiswas/bq-readonly-mcp`) — unavoidable, that's where it's hosted
+- ❌ Anywhere else mentioning "mariadb" (or any other internal company term, product, project ID, dataset name, customer, employee) is a leak. Refuse it in code review.
 
 `tests/test_no_pii.py` enforces this with a positive allowlist. If you're tempted to add a "real" example, use a Google public-data project instead (`bigquery-public-data.samples.shakespeare`, `bigquery-public-data.usa_names.usa_1910_2013`, etc.).
 
