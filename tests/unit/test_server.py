@@ -156,9 +156,7 @@ async def test_dispatch_validation_error_returns_error_message():
 
     with patch(
         "bq_readonly_mcp.tools.list_datasets.handle",
-        side_effect=ValidationError.from_exception_data(
-            "ListDatasetsInput", []
-        ),
+        side_effect=ValidationError.from_exception_data("ListDatasetsInput", []),
     ):
         result = await dispatch_tool("list_datasets", {}, cfg, bq)
 

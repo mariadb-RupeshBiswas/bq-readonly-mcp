@@ -14,11 +14,13 @@ import sys
 from typing import Any
 
 import mcp.server.stdio
-from google.api_core.exceptions import GoogleAPIError
+from google.api_core.exceptions import GoogleAPIError, Unauthenticated
+from google.auth.exceptions import RefreshError
 from mcp.server import Server
 from mcp.types import TextContent, Tool
 from pydantic import ValidationError
 
+from . import __version__
 from .auth import AuthError, build_bigquery_client
 from .bq import BQClient, CostExceededError, DatasetNotAllowedError
 from .config import Config, build_config
@@ -142,7 +144,33 @@ async def dispatch_tool(
     except (SafetyError, CostExceededError, DatasetNotAllowedError, ValueError) as exc:
         # Return structured errors as text so the MCP client sees them
         return [TextContent(type="text", text=f"error: {exc}")]
+    except (RefreshError, Unauthenticated) as exc:
+        # ADC tokens can expire mid-session (gcloud reauth required).
+        # Return an actionable message so the LLM/user knows the next step
+        # rather than a raw stack trace.
+        LOG.warning("auth refresh failure: %s", exc)
+        return [
+            TextContent(
+                type="text",
+                text=(
+                    "error: authentication has expired. Run "
+                    "`gcloud auth application-default login` and retry. "
+                    f"(underlying: {exc})"
+                ),
+            )
+        ]
     except GoogleAPIError as exc:
+        # Detect HTTP 401 even when the API library wraps it as a generic GoogleAPIError
+        if getattr(exc, "code", None) == 401 or "401" in str(exc):
+            return [
+                TextContent(
+                    type="text",
+                    text=(
+                        "error: BigQuery rejected the request as unauthenticated. "
+                        "Try `gcloud auth application-default login` to refresh ADC."
+                    ),
+                )
+            ]
         return [TextContent(type="text", text=f"error: BigQuery API error: {exc}")]
     except Exception as exc:
         # Last-resort catch: keeps the MCP loop alive; logs full traceback for debugging
@@ -154,7 +182,9 @@ async def dispatch_tool(
 
 async def _serve(cfg: Config, bq: BQClient) -> None:
     """Async MCP server loop: register tools and serve over stdio."""
-    app = Server("bq-readonly-mcp")
+    # Pass our package version so MCP clients see "bq-readonly-mcp 0.1.x" in
+    # serverInfo, not the version of the underlying mcp framework
+    app = Server("bq-readonly-mcp", version=__version__)
 
     @app.list_tools()
     async def _list_tools() -> list[Tool]:

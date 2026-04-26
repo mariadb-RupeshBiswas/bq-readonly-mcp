@@ -25,8 +25,15 @@ def make_real_job(
     job_id="abc",
     location="US",
 ):
+    # Real BigQuery `job.result()` returns a RowIterator that exposes both
+    # iteration AND a .schema attribute — mock it accordingly so run_query's
+    # schema-from-iterator path is exercised
+    result_iter = MagicMock()
+    result_iter.__iter__ = lambda self: iter(rows or [])
+    result_iter.schema = schema or []
+
     job = MagicMock()
-    job.result.return_value = rows or []
+    job.result.return_value = result_iter
     job.schema = schema or []
     job.total_bytes_processed = total_bytes_processed
     job.total_bytes_billed = total_bytes_billed
@@ -90,10 +97,8 @@ def test_run_query_executes_when_under_cap():
     client = MagicMock()
 
     dryrun = make_dryrun_job(total_bytes_processed=500)
-    real = make_real_job(rows=[MagicMock(__iter__=lambda self: iter([("a", 1)]))])
+    real = make_real_job(rows=[])
     client.query.side_effect = [dryrun, real]
-
-    real.result.return_value = [{"x": 1}]
 
     bq = BQClient(client=client, allowed_datasets=None)
     result = bq.run_query("SELECT 1", max_bytes_billed=1_073_741_824)
@@ -104,8 +109,7 @@ def test_run_query_executes_when_under_cap():
 def test_run_query_passes_max_bytes_billed_to_real_job():
     client = MagicMock()
     dryrun = make_dryrun_job(total_bytes_processed=500)
-    real = make_real_job()
-    real.result.return_value = []
+    real = make_real_job(rows=[])
     client.query.side_effect = [dryrun, real]
 
     bq = BQClient(client=client, allowed_datasets=None)
@@ -115,3 +119,60 @@ def test_run_query_passes_max_bytes_billed_to_real_job():
     real_call = client.query.call_args_list[1]
     job_config = real_call.kwargs.get("job_config") or real_call.args[1]
     assert job_config.maximum_bytes_billed == 999_999
+
+
+def test_run_query_populates_column_schema():
+    """Regression test for the v0.1.0 bug where column_schema came back empty."""
+    client = MagicMock()
+    dryrun = make_dryrun_job(total_bytes_processed=500)
+
+    # Mock a schema field on the row iterator (the real path)
+    field = MagicMock()
+    field.name = "word"
+    field.field_type = "STRING"
+    field.mode = "NULLABLE"
+    field.description = None
+
+    real = make_real_job(rows=[], schema=[field])
+    client.query.side_effect = [dryrun, real]
+
+    bq = BQClient(client=client, allowed_datasets=None)
+    result = bq.run_query("SELECT word FROM t", max_bytes_billed=1_073_741_824)
+
+    assert len(result.column_schema) == 1
+    assert result.column_schema[0].name == "word"
+    assert result.column_schema[0].type == "STRING"
+
+
+def test_run_query_falls_back_to_job_schema_when_iter_lacks_one():
+    """If result_iter.schema is empty, fall back to job.schema."""
+    client = MagicMock()
+    dryrun = make_dryrun_job(total_bytes_processed=500)
+
+    field = MagicMock()
+    field.name = "x"
+    field.field_type = "INT64"
+    field.mode = "NULLABLE"
+    field.description = None
+
+    # iterator schema empty, job.schema populated
+    result_iter = MagicMock()
+    result_iter.__iter__ = lambda self: iter([])
+    result_iter.schema = []  # empty on iterator
+
+    real = MagicMock()
+    real.result.return_value = result_iter
+    real.schema = [field]  # populated on job
+    real.total_bytes_processed = 500
+    real.total_bytes_billed = 0
+    real.cache_hit = False
+    real.job_id = "j"
+    real.location = "US"
+
+    client.query.side_effect = [dryrun, real]
+
+    bq = BQClient(client=client, allowed_datasets=None)
+    result = bq.run_query("SELECT x FROM t", max_bytes_billed=1_073_741_824)
+
+    assert len(result.column_schema) == 1
+    assert result.column_schema[0].name == "x"
