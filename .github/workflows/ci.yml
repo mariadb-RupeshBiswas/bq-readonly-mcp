@@ -7,6 +7,11 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Least-privilege: CI only needs to read the repo to run lint/types/tests.
+# Without this block GITHUB_TOKEN inherits the repo's default broad scope.
+permissions:
+  contents: read
+
 env:
   # Force JS actions onto Node 24 ahead of GitHub's June 2026 mandatory flip;
   # lets us verify the toolchain on Node 24 before the deadline.
