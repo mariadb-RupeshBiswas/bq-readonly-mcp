@@ -67,17 +67,25 @@ _WARN_PREVIEW_COUNT = 3  # show at most this many dataset IDs in the warning
 def _warn_if_no_allowlist(cfg: Config, bq: BQClient) -> None:
     """Print a clear stderr warning when no dataset allowlist is configured.
 
+    Uses the underlying `client.list_datasets()` directly for a fast names-only
+    roundtrip instead of `bq.list_datasets()`, which fetches per-dataset
+    metadata via `get_dataset()` and was blocking MCP handshake on projects
+    with many datasets (e.g. 100+ datasets caused 60s+ Windsurf timeouts).
+
     Truncates the dataset list to the first _WARN_PREVIEW_COUNT IDs to avoid
     accidentally pasting a full dataset inventory into chat logs or tickets.
     """
     if cfg.allowed_datasets is not None:
         return
     try:
-        datasets = bq.list_datasets()
+        # Single paginated API call; no per-dataset get_dataset() roundtrips.
+        # client.list_datasets() returns DatasetListItem objects which already
+        # carry .dataset_id — that's all we need for the warning preview.
+        items = list(bq.client.list_datasets())
     except Exception as exc:
         LOG.warning("could not enumerate datasets at startup: %s", exc)
         return
-    ids = sorted(d.dataset_id for d in datasets)
+    ids = sorted(item.dataset_id for item in items)
 
     # Truncate the preview; log the full list at DEBUG for diagnostics
     preview = ids[:_WARN_PREVIEW_COUNT]

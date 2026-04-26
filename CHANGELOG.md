@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] — 2026-04-26
+
+### Fixed
+- Server startup no longer blocks the MCP handshake on projects with many datasets. The `_warn_if_no_allowlist` warning previously called `bq.list_datasets()`, which fetches per-dataset metadata via `client.get_dataset()` — one API roundtrip per dataset. With 100+ datasets this exceeded the 60-second MCP-client init timeout (Windsurf reported "MCP server timed out after 60 seconds"). Now uses `client.list_datasets()` directly: a single paginated API call returning names only.
+
 ## [0.1.1] — 2026-04-26
 
 ### Fixed

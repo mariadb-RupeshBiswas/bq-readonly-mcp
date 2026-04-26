@@ -308,6 +308,8 @@ EXTRA_FALSE_POSITIVES = {
     "schema-from-iterator",
     "list-item",
     "mid-session",
+    "names-only",
+    "per-dataset",
     # GitHub Actions YAML keys + action names (publish.yml OIDC trusted publishing)
     "gh-action-pypi-publish",
     "id-token",
