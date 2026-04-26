@@ -147,7 +147,7 @@ Dev-only dependencies (`ruff`, `mypy`, `pytest`, `pytest-asyncio`, `pytest-mock`
 Verified by manual grep: only `rupesh.biswas@mariadb.com` (author email in `pyproject.toml` and inline credits) and `mariadb-RupeshBiswas/bq-readonly-mcp` (GitHub URL in `pyproject.toml`, `README.md`, and badges) appear. Every other tracked file is clean.
 
 ### No internal terms
-`grep -rEi "mariadb-business|customer|internal" src/ tests/ docs/` returns:
+A grep for known internal-term patterns + "customer" + "internal" against `src/`, `tests/`, `docs/` returns:
 - `tests/unit/test_bq_listing.py:make_table("customers")` — generic test fixture name, not internal data
 - `tests/unit/test_no_pii.py:"internal-data"` — appears as a label in the regression scanner's allowlist (the test that detects leaks contains the word "internal-data" as documentation)
 - `docs/superpowers/specs/...md`, `docs/superpowers/plans/...md` — design/planning docs use the words "internal" and "customer" in normative text ("no internal project IDs", "no customer names")
