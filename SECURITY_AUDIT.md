@@ -158,7 +158,7 @@ None of these are real internal data leaks.
 Only `rupesh.biswas@mariadb.com` (author) and `you@example.com` (placeholder in `docs/TROUBLESHOOTING.md`) appear.
 
 ### Host-path leak (minor)
-`docs/superpowers/plans/2026-04-26-bq-readonly-mcp-implementation.md` contains `/Users/rupeshbiswas/projects/bq-readonly-mcp` in one example command. The OS username is the same as the GitHub handle, so this leaks no new info — but it's host-specific and cosmetic. **Recommendation:** genericize before pushing the plan doc to the public repo (or move the plan to a private location). Tracked as P2-4.
+The implementation plan doc previously contained a host-specific path in one example command. The OS username matched the public GitHub handle, so this leaked no new info — but it was host-specific and cosmetic. Tracked as P2-4 and addressed in v0.1.1.
 
 #### P2-4. Host path in tracked plan doc
 
@@ -166,9 +166,9 @@ Only `rupesh.biswas@mariadb.com` (author) and `you@example.com` (placeholder in 
 
 **Risk:** Cosmetic — username already public via GitHub handle. No new information disclosed.
 
-**Recommendation:** replace `/Users/rupeshbiswas/projects/bq-readonly-mcp` with `<your-checkout>` or `~/projects/bq-readonly-mcp` before push. Or exclude `docs/superpowers/` from the public repo entirely (it's a planning artifact, not user-facing docs).
+**Recommendation:** genericize the host-specific path with a `<your-checkout>` placeholder, or exclude the planning artifact from the published distribution.
 
-**Status:** OPEN — minor cosmetic cleanup. Defer to v0.1.1 if needed.
+**Status:** RESOLVED in v0.1.1.
 
 ### Automated scanner
 `tests/unit/test_no_pii.py` is the regression gate for hygiene. It walks `git ls-files`, extracts every project-ID-shaped token from text files, and asserts each match is on a positive allowlist (placeholders, public-data projects, common tooling/narrative tokens that incidentally match). **Confirmed passing** on this commit. Any new file added to the repo will be scanned automatically by CI.

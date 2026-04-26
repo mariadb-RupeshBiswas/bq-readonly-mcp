@@ -302,6 +302,12 @@ EXTRA_FALSE_POSITIVES = {
     # Self-referential tokens introduced by this allowlist itself
     "a-f0-9",
     "audit-narrative",
+    # Hyphenated tokens from CHANGELOG / inline doc comments in v0.1.1+
+    "early-fetch",
+    "process-flavored",
+    "schema-from-iterator",
+    "list-item",
+    "mid-session",
     # GitHub Actions YAML keys + action names (publish.yml OIDC trusted publishing)
     "gh-action-pypi-publish",
     "id-token",

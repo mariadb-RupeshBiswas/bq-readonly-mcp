@@ -56,7 +56,9 @@ class BQClient:
                 continue
             if name_contains and name_contains.lower() not in ds_ref.dataset_id.lower():
                 continue
-            ds = self.client.get_dataset(ds_ref)
+            # client.list_datasets() yields DatasetListItem; get_dataset wants
+            # a DatasetReference (or str path). DatasetListItem.reference gives us that.
+            ds = self.client.get_dataset(ds_ref.reference)
             out.append(
                 DatasetInfo(
                     dataset_id=ds.dataset_id,
@@ -164,7 +166,11 @@ class BQClient:
 
         config = bigquery.QueryJobConfig(maximum_bytes_billed=max_bytes_billed)
         job = self.client.query(query, job_config=config)
-        rows = [dict(row.items()) for row in job.result()]
+        # Capture the RowIterator once — it carries the authoritative schema,
+        # while job.schema can stay None on async / early-fetch paths
+        result_iter = job.result()
+        rows = [dict(row.items()) for row in result_iter]
+        schema_fields = result_iter.schema or job.schema or []
 
         return QueryResult(
             rows=rows,
@@ -175,7 +181,7 @@ class BQClient:
                     mode=f.mode or "NULLABLE",
                     description=getattr(f, "description", None),
                 )
-                for f in job.schema or []
+                for f in schema_fields
             ],
             # Use dryrun bytes_proc — the real job may report None until fully settled
             total_bytes_processed=bytes_proc,
