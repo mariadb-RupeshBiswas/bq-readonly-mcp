@@ -1,0 +1,13 @@
+{
+  "mcpServers": [
+    {
+      "name": "bq-readonly",
+      "command": "uvx",
+      "args": [
+        "bq-readonly-mcp",
+        "--project", "your-project-id",
+        "--location", "US"
+      ]
+    }
+  ]
+}

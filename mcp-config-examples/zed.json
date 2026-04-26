@@ -1,0 +1,15 @@
+{
+  "context_servers": {
+    "bq-readonly": {
+      "command": {
+        "path": "uvx",
+        "args": [
+          "bq-readonly-mcp",
+          "--project", "your-project-id",
+          "--location", "US"
+        ]
+      },
+      "settings": {}
+    }
+  }
+}

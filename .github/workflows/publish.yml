@@ -1,0 +1,143 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write  # Required for OIDC trusted publishing to PyPI
+
+env:
+  # Force JS actions onto Node 24 ahead of GitHub's June 2026 mandatory flip;
+  # lets us verify the toolchain on Node 24 before the deadline.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main' && github.ref_protected == true
+    runs-on: ubuntu-latest
+    environment: pypi
+    concurrency:
+      group: publish-${{ github.ref }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Verify branch is protected
+        if: github.ref_protected != true
+        run: |
+          echo "::error::main branch is not protected; refusing to publish v${VERSION:-unknown}."
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Build distributions
+        run: uv build --no-create-gitignore
+
+      - name: Check publish status on PyPI
+        id: publish_status
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import tomllib
+          import urllib.error
+          import urllib.request
+          from pathlib import Path
+
+          project = tomllib.loads(Path("pyproject.toml").read_text())["project"]
+          package_name = project["name"]
+          version = project["version"]
+          built_files = sorted(
+              path
+              for path in Path("dist").iterdir()
+              if path.is_file() and not path.name.startswith(".")
+          )
+          built_file_names = [path.name for path in built_files]
+
+          existing_files = {}
+          url = f"https://pypi.org/pypi/{package_name}/json"
+          try:
+              with urllib.request.urlopen(url, timeout=10) as response:
+                  payload = json.load(response)
+          except urllib.error.HTTPError as exc:
+              if exc.code != 404:
+                  raise
+          else:
+              for file_info in payload.get("releases", {}).get(version, []):
+                  filename = file_info.get("filename")
+                  if filename:
+                      existing_files[filename] = file_info.get("digests", {}).get("sha256")
+
+          missing_files = [name for name in built_file_names if name not in existing_files]
+          mismatched_files = []
+          for path in built_files:
+              remote_sha256 = existing_files.get(path.name)
+              if remote_sha256 is None:
+                  continue
+              local_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+              if local_sha256 != remote_sha256:
+                  mismatched_files.append(path.name)
+
+          if missing_files and mismatched_files:
+              publish_action = "fail"
+              reason = (
+                  f"Version {version} is partially published on PyPI, but existing files differ "
+                  f"from the current build: {', '.join(mismatched_files)}. Bump the version "
+                  "before publishing updated artifacts."
+              )
+          elif missing_files:
+              publish_action = "publish"
+              reason = f"Missing files for {package_name} {version}: {', '.join(missing_files)}"
+          elif mismatched_files:
+              publish_action = "skip"
+              reason = (
+                  f"Version {version} is already published on PyPI, but the current build differs "
+                  f"for: {', '.join(mismatched_files)}. Skipping publish because PyPI does not "
+                  "allow replacing files in an existing release."
+              )
+          else:
+              publish_action = "skip"
+              reason = f"All built artifacts for {package_name} {version} already exist on PyPI."
+
+          github_output = Path(os.environ["GITHUB_OUTPUT"])
+          with github_output.open("a", encoding="utf-8") as fh:
+              fh.write(f"package_name={package_name}\n")
+              fh.write(f"version={version}\n")
+              fh.write(f"publish_action={publish_action}\n")
+              fh.write("reason<<EOF\n")
+              fh.write(reason + "\n")
+              fh.write("EOF\n")
+          PY
+
+      - name: Skip publish
+        if: steps.publish_status.outputs.publish_action == 'skip'
+        run: echo "${{ steps.publish_status.outputs.reason }}"
+
+      - name: Fail when published artifacts conflict with the current build
+        if: steps.publish_status.outputs.publish_action == 'fail'
+        run: |
+          echo "${{ steps.publish_status.outputs.reason }}"
+          exit 1
+
+      # Trusted publishing: PyPI is configured (via Account → Publishing) to trust
+      # this exact repo + workflow + environment. No token needed; the OIDC
+      # id-token is exchanged for a short-lived publish credential at runtime.
+      - name: Publish to PyPI (trusted publishing)
+        if: steps.publish_status.outputs.publish_action == 'publish'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          skip-existing: true

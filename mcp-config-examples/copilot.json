@@ -1,0 +1,13 @@
+{
+  "servers": {
+    "bq-readonly": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "bq-readonly-mcp",
+        "--project", "your-project-id",
+        "--location", "US"
+      ]
+    }
+  }
+}

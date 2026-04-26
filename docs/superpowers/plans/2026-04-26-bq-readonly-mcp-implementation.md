@@ -271,7 +271,7 @@ ignore_missing_imports = true
 
 - [ ] **Step 1.5: Verify `uv sync` succeeds**
 
-Run: `cd /Users/rupeshbiswas/projects/bq-readonly-mcp && uv sync --extra dev`
+Run: `cd <repo-root> && uv sync --extra dev`
 Expected: virtual env created at `.venv/`, dependencies resolved, `uv.lock` written.
 
 - [ ] **Step 1.6: Commit**
