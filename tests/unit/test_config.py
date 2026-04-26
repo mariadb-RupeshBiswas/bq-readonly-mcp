@@ -61,3 +61,20 @@ def test_max_bytes_billed_override():
 def test_invalid_max_limit_rejected():
     with pytest.raises(SystemExit):
         build_config(argv=["--project", "p", "--max-limit", "0"], env={})
+
+
+def test_invalid_env_int_rejected():
+    with pytest.raises(SystemExit):
+        build_config(argv=["--project", "p"], env={"BIGQUERY_DEFAULT_LIMIT": "abc"})
+    with pytest.raises(SystemExit):
+        build_config(argv=["--project", "p"], env={"BIGQUERY_DEFAULT_LIMIT": "-5"})
+
+
+def test_empty_env_allowlist_treated_as_unset():
+    cfg = build_config(argv=["--project", "p"], env={"BIGQUERY_ALLOWED_DATASETS": ""})
+    assert cfg.allowed_datasets is None
+
+
+def test_whitespace_only_env_allowlist_treated_as_unset():
+    cfg = build_config(argv=["--project", "p"], env={"BIGQUERY_ALLOWED_DATASETS": "   "})
+    assert cfg.allowed_datasets is None

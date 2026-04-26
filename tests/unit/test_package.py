@@ -1,3 +1,6 @@
+"""Smoke test that the package is installable and imports correctly."""
+
+
 def test_package_imports():
     import bq_readonly_mcp
 

@@ -29,12 +29,26 @@ def _positive_int(s: str) -> int:
     return n
 
 
+def _env_positive_int(env: Mapping[str, str], key: str, default: int) -> int:
+    """Parse env var as positive int, with a clear error message on bad input."""
+    raw = env.get(key, str(default))
+    try:
+        n = int(raw)
+    except ValueError:
+        raise SystemExit(f"error: env var {key}={raw!r} must be a positive integer") from None
+    if n <= 0:
+        raise SystemExit(f"error: env var {key}={raw!r} must be a positive integer")
+    return n
+
+
 def build_config(argv: list[str], env: Mapping[str, str]) -> Config:
     """Parse CLI args plus env vars into a typed Config object.
 
     Precedence (later wins): defaults < env vars < CLI args.
     Calls parser.error() (which exits) if --project / GCP_PROJECT_ID is missing.
     """
+    # Build the argument parser. Env vars become argparse defaults, so any explicit
+    # CLI flag will naturally override them.
     parser = argparse.ArgumentParser(
         prog="bq-readonly-mcp",
         description="Read-only BigQuery MCP server with auto-LIMIT and cost guards.",
@@ -45,22 +59,24 @@ def build_config(argv: list[str], env: Mapping[str, str]) -> Config:
     parser.add_argument(
         "--default-limit",
         type=_positive_int,
-        default=int(env.get("BIGQUERY_DEFAULT_LIMIT", "50")),
+        default=_env_positive_int(env, "BIGQUERY_DEFAULT_LIMIT", 50),
     )
     parser.add_argument(
         "--max-limit",
         type=_positive_int,
-        default=int(env.get("BIGQUERY_MAX_LIMIT", "10000")),
+        default=_env_positive_int(env, "BIGQUERY_MAX_LIMIT", 10000),
     )
     parser.add_argument(
         "--max-bytes-billed",
         type=_positive_int,
-        default=int(env.get("BIGQUERY_MAX_BYTES_BILLED", str(1_073_741_824))),
+        default=_env_positive_int(
+            env, "BIGQUERY_MAX_BYTES_BILLED", 1_073_741_824
+        ),  # 1 GB default cap
     )
     parser.add_argument(
         "--sample-rows",
         type=_positive_int,
-        default=int(env.get("BIGQUERY_SAMPLE_ROWS", "3")),
+        default=_env_positive_int(env, "BIGQUERY_SAMPLE_ROWS", 3),
     )
     parser.add_argument(
         "--key-file",
@@ -72,10 +88,12 @@ def build_config(argv: list[str], env: Mapping[str, str]) -> Config:
     if not ns.project:
         parser.error("--project (or GCP_PROJECT_ID env var) is required")
 
-    # CLI flag wins; otherwise check env var and parse comma-separated list
+    # CLI flag wins; otherwise parse comma-separated env var (empty/whitespace → None, same as unset)
     allowed = ns.datasets
-    if allowed is None and "BIGQUERY_ALLOWED_DATASETS" in env:
-        allowed = [d.strip() for d in env["BIGQUERY_ALLOWED_DATASETS"].split(",") if d.strip()]
+    if allowed is None:
+        raw = env.get("BIGQUERY_ALLOWED_DATASETS", "").strip()
+        if raw:
+            allowed = [d.strip() for d in raw.split(",") if d.strip()]
 
     return Config(
         project=ns.project,
