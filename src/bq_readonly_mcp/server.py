@@ -79,6 +79,66 @@ def _warn_if_no_allowlist(cfg: Config, bq: BQClient) -> None:
     )
 
 
+async def dispatch_tool(
+    name: str, arguments: dict[str, Any], cfg: Config, bq: BQClient
+) -> list[TextContent]:
+    """Dispatch a named tool call to its handler and return TextContent results.
+
+    Extracted as a module-level function so it can be unit-tested without
+    spinning up the full MCP stdio server.
+    """
+    result: Any
+    try:
+        if name == list_datasets.NAME:
+            result = await asyncio.to_thread(list_datasets.handle, arguments, bq=bq)
+        elif name == list_tables.NAME:
+            result = await asyncio.to_thread(list_tables.handle, arguments, bq=bq)
+        elif name == get_table_metadata.NAME:
+            result = await asyncio.to_thread(get_table_metadata.handle, arguments, bq=bq)
+        elif name == describe_columns.NAME:
+            result = await asyncio.to_thread(describe_columns.handle, arguments, bq=bq)
+        elif name == get_table.NAME:
+            result = await asyncio.to_thread(
+                get_table.handle,
+                arguments,
+                bq=bq,
+                default_sample_rows=cfg.sample_rows,
+                max_bytes_billed=cfg.max_bytes_billed,
+            )
+        elif name == run_query.NAME:
+            result = await asyncio.to_thread(
+                run_query.handle,
+                arguments,
+                bq=bq,
+                default_limit=cfg.default_limit,
+                max_limit=cfg.max_limit,
+                max_bytes_billed=cfg.max_bytes_billed,
+            )
+        elif name == estimate_query_cost.NAME:
+            result = await asyncio.to_thread(
+                estimate_query_cost.handle,
+                arguments,
+                bq=bq,
+                max_bytes_billed=cfg.max_bytes_billed,
+            )
+        else:
+            raise ValueError(f"unknown tool: {name!r}")
+    except ValidationError as exc:
+        # ValidationError is a subclass of ValueError; must be checked first
+        return [TextContent(type="text", text=f"error: invalid input: {exc}")]
+    except (SafetyError, CostExceededError, DatasetNotAllowedError, ValueError) as exc:
+        # Return structured errors as text so the MCP client sees them
+        return [TextContent(type="text", text=f"error: {exc}")]
+    except GoogleAPIError as exc:
+        return [TextContent(type="text", text=f"error: BigQuery API error: {exc}")]
+    except Exception as exc:
+        # Last-resort catch: keeps the MCP loop alive; logs full traceback for debugging
+        LOG.exception("unexpected error in tool %s", name)
+        return [TextContent(type="text", text=f"error: unexpected error ({type(exc).__name__})")]
+
+    return [TextContent(type="text", text=json.dumps(result, default=str))]
+
+
 async def _serve(cfg: Config, bq: BQClient) -> None:
     """Async MCP server loop: register tools and serve over stdio."""
     app = Server("bq-readonly-mcp")
@@ -92,56 +152,7 @@ async def _serve(cfg: Config, bq: BQClient) -> None:
 
     @app.call_tool()
     async def _call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
-        # Dispatch to the matching tool handler; wrap sync calls in a thread
-        result: Any
-        try:
-            if name == list_datasets.NAME:
-                result = await asyncio.to_thread(list_datasets.handle, arguments, bq=bq)
-            elif name == list_tables.NAME:
-                result = await asyncio.to_thread(list_tables.handle, arguments, bq=bq)
-            elif name == get_table_metadata.NAME:
-                result = await asyncio.to_thread(get_table_metadata.handle, arguments, bq=bq)
-            elif name == describe_columns.NAME:
-                result = await asyncio.to_thread(describe_columns.handle, arguments, bq=bq)
-            elif name == get_table.NAME:
-                result = await asyncio.to_thread(
-                    get_table.handle,
-                    arguments,
-                    bq=bq,
-                    default_sample_rows=cfg.sample_rows,
-                    max_bytes_billed=cfg.max_bytes_billed,
-                )
-            elif name == run_query.NAME:
-                result = await asyncio.to_thread(
-                    run_query.handle,
-                    arguments,
-                    bq=bq,
-                    default_limit=cfg.default_limit,
-                    max_limit=cfg.max_limit,
-                    max_bytes_billed=cfg.max_bytes_billed,
-                )
-            elif name == estimate_query_cost.NAME:
-                result = await asyncio.to_thread(
-                    estimate_query_cost.handle,
-                    arguments,
-                    bq=bq,
-                    max_bytes_billed=cfg.max_bytes_billed,
-                )
-            else:
-                raise ValueError(f"unknown tool: {name!r}")
-        except (SafetyError, CostExceededError, DatasetNotAllowedError, ValueError) as exc:
-            # Return structured errors as text so the MCP client sees them
-            return [TextContent(type="text", text=f"error: {exc}")]
-        except ValidationError as exc:
-            return [TextContent(type="text", text=f"error: invalid input: {exc}")]
-        except GoogleAPIError as exc:
-            return [TextContent(type="text", text=f"error: BigQuery API error: {exc}")]
-        except Exception as exc:
-            # Last-resort catch: keeps the MCP loop alive; logs full traceback for debugging
-            LOG.exception("unexpected error in tool %s", name)
-            return [TextContent(type="text", text=f"error: unexpected error ({type(exc).__name__})")]
-
-        return [TextContent(type="text", text=json.dumps(result, default=str))]
+        return await dispatch_tool(name, arguments, cfg, bq)
 
     async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
         await app.run(read_stream, write_stream, app.create_initialization_options())

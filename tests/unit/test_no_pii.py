@@ -198,6 +198,7 @@ ALLOWED = {
     "double-injection",
     "raw-string-escape",
     "non-empty",
+    "module-level",
     "uv-cache",
     "egg-info",
     "single-process",
@@ -217,6 +218,7 @@ ALLOWED = {
     "cli-proj",
     "env-proj",
     "my-proj",
+    "test-proj",
     # Misc doc/narrative
     "re-inject",
     "code-reviewer",
