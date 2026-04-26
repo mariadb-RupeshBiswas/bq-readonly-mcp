@@ -19,6 +19,12 @@ jobs:
       cancel-in-progress: false
 
     steps:
+      - name: Verify branch is protected
+        if: github.ref_protected != true
+        run: |
+          echo "::error::main branch is not protected; refusing to publish v${VERSION:-unknown}."
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@v5
 
