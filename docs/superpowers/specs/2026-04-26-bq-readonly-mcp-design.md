@@ -81,7 +81,7 @@ All config resolves in this order (later overrides earlier): defaults → enviro
 |---|---|---|---|---|
 | `--project` | `GCP_PROJECT_ID` | none | **yes** | GCP project ID to bill and query against. |
 | `--location` | `BIGQUERY_LOCATION` | `US` | no | BigQuery location (`US`, `EU`, `asia-northeast1`, …). |
-| `--datasets` | `BIGQUERY_ALLOWED_DATASETS` (comma-separated) | none (all readable) | no | Restrict listing/querying to these datasets. |
+| `--datasets` | `BIGQUERY_ALLOWED_DATASETS` (comma-separated) | none (all readable) | no | Restrict listing/querying to these datasets. **If unset, the server enumerates all accessible datasets at startup and logs a clear stderr warning naming each one**, so the user is never surprised by what the LLM can reach. The warning includes a one-liner showing the `--datasets` flag they can copy-paste to lock it down. |
 | `--default-limit` | `BIGQUERY_DEFAULT_LIMIT` | `50` | no | Auto-LIMIT appended when caller doesn't specify one. |
 | `--max-limit` | `BIGQUERY_MAX_LIMIT` | `10000` | no | Hard ceiling on the LIMIT a caller can request. |
 | `--max-bytes-billed` | `BIGQUERY_MAX_BYTES_BILLED` | `1073741824` (1 GB) | no | Per-query bytes-billed cap, enforced via dry-run + job config. |
@@ -259,7 +259,7 @@ Mirrors `google-sheets-mcp`'s proven pattern.
 - No outbound HTTP from this server other than to Google APIs via the official client library.
 - No `eval`, no dynamic code execution, no shell-out except optional `gcloud auth application-default login` invocation when ADC is missing (and only if user is on an interactive TTY).
 - All error messages reviewed to avoid echoing back user input verbatim into logs (prompt-injection-via-error-log defense).
-- Public-repo hygiene: no real project IDs, no customer/employee names, no real spreadsheet IDs in tracked files. All examples use `your-project-id`, `bigquery-public-data.*`, etc. Enforced by a `tests/test_no_pii.py` that greps tracked files for known internal strings (`mariadb-business-analytics`, `mariadb.com` outside author email, etc.).
+- Public-repo hygiene: no real internal project IDs, no customer/employee names, no real spreadsheet IDs, no internal hostnames in tracked files. All examples must use safe placeholders (`your-project-id`, `your_dataset`) or Google's public datasets (`bigquery-public-data.*`). Enforced by a `tests/test_no_pii.py` that uses a **positive allowlist** approach: it walks tracked files, extracts any string matching the GCP-project-ID regex `[a-z][a-z0-9-]{4,28}[a-z0-9]`, and asserts each matches one of: the documented placeholder (`your-project-id`), a Google public-data project (`bigquery-public-data`, `cloud-samples-data`, `bigquery-samples`), or the author's `pyproject.toml` email domain. Any other project-ID-shaped string fails the test. This avoids ever naming the forbidden values in the public repo while still catching leaks.
 - `SECURITY.md` for vuln reporting; `SECURITY_AUDIT.md` after Phase 8 self-audit.
 - `.gitignore` covers `.env`, ADC JSON, `__pycache__`, `.venv`, `dist/`, `*.egg-info`.
 
@@ -307,5 +307,5 @@ This spec is "done" when:
 - Branch protection enforced on `main`.
 - Security audit (Phase 8) signed off, no P0/P1 open.
 - `mcp-config-examples/` contains working configs for Claude Code, Claude Desktop, Cursor, Windsurf, Copilot.
-- `~/.codeium/windsurf/mcp_config.json` and `/Users/rupeshbiswas/projects/.mcp.json` updated to use `uvx bq-readonly-mcp`.
+- `~/.codeium/windsurf/mcp_config.json` and the project-level `.mcp.json` updated to use `uvx bq-readonly-mcp`.
 - `google-sheets-mcp` re-audit complete; any P0/P1 fixed and republished.
