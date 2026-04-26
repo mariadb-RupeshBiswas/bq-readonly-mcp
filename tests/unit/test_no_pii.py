@@ -302,6 +302,12 @@ EXTRA_FALSE_POSITIVES = {
     # Self-referential tokens introduced by this allowlist itself
     "a-f0-9",
     "audit-narrative",
+    # GitHub Actions YAML keys + action names (publish.yml OIDC trusted publishing)
+    "gh-action-pypi-publish",
+    "id-token",
+    "packages-dir",
+    "short-lived",
+    "skip-existing",
 }
 
 
