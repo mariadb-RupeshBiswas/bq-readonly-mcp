@@ -334,10 +334,11 @@ def validate_select_query(sql: str) -> None:
         raise SafetyError(f"disallowed DML/DDL keyword detected: {match.group(1).upper()}")
 
 
-# Trailing-anchor LIMIT regex: matches `LIMIT N [OFFSET M]` only at end-of-string,
-# so LIMIT clauses inside subqueries do not register as outer LIMITs
+# Trailing-anchor LIMIT regex: matches `LIMIT N [OFFSET M]` only at end-of-string.
+# N may be a literal integer, a named parameter (@name), or a positional marker (?).
+# This prevents double-injection when the caller already passes a parameterized LIMIT.
 _TRAILING_LIMIT_RE = re.compile(
-    r"\bLIMIT\s+\d+(\s+OFFSET\s+\d+)?\s*;?\s*$",
+    r"\bLIMIT\s+(\d+|@\w+|\?)(\s+OFFSET\s+(\d+|@\w+|\?))?\s*;?\s*$",
     re.IGNORECASE,
 )
 

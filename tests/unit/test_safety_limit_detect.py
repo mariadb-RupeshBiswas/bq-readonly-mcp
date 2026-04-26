@@ -29,3 +29,15 @@ def test_limit_followed_by_semicolon():
 
 def test_limit_followed_by_whitespace_and_semicolon():
     assert has_outer_limit("SELECT * FROM t LIMIT 10  ;  ") is True
+
+
+def test_limit_with_named_parameter():
+    assert has_outer_limit("SELECT * FROM t LIMIT @max") is True
+
+
+def test_limit_with_positional_parameter():
+    assert has_outer_limit("SELECT * FROM t LIMIT ?") is True
+
+
+def test_limit_param_with_offset():
+    assert has_outer_limit("SELECT * FROM t LIMIT @max OFFSET @off") is True
