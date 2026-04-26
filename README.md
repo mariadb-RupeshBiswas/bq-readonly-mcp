@@ -2,9 +2,9 @@
 
 > 🔍 Read-only BigQuery MCP server with auto-LIMIT, dry-run cost guard, and ADC auth. Safe for LLMs to query your BigQuery — no DML, no surprises, no runaway bills.
 
-[![PyPI](https://img.shields.io/pypi/v/bq-readonly-mcp.svg)](https://pypi.org/project/bq-readonly-mcp/)
+[![PyPI](https://img.shields.io/pypi/v/bq-readonly-mcp.svg?cacheSeconds=300)](https://pypi.org/project/bq-readonly-mcp/)
 [![CI](https://github.com/mariadb-RupeshBiswas/bq-readonly-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/mariadb-RupeshBiswas/bq-readonly-mcp/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/pypi/pyversions/bq-readonly-mcp.svg)](https://pypi.org/project/bq-readonly-mcp/)
+[![Python](https://img.shields.io/pypi/pyversions/bq-readonly-mcp.svg?cacheSeconds=300)](https://pypi.org/project/bq-readonly-mcp/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ---
