@@ -131,6 +131,8 @@ ALLOWED = {
     "squash-merging",
     "test-driven",
     "user-visible",
+    "cancel-in-progress",
+    "sha256",
     "on-demand",
     "billing-authoritative",
     "bytes-billed",
