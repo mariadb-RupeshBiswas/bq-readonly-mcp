@@ -93,6 +93,12 @@ bq-readonly-mcp/
 - **Lint + type-check** before merging to `main` (covered by CI). Locally: `uv run ruff check src tests` and `uv run mypy src`.
 - **Atomic commits.** One logical change per commit. The plan groups related steps so that each task ends with one commit.
 - **No file edited in two consecutive tasks unless the second task depends on the first being committed first.** This keeps the diff per commit small and reviewable.
+- **Code style — short, precise comments + human-readable formatting.** The author's preference (overriding the default "no comments" rule):
+  - Add a brief one-line comment above each non-trivial block explaining what it does.
+  - Add WHY comments where the choice would surprise a future reader (workarounds, invariants).
+  - Keep comments short and precise — a clear sentence beats a clear paragraph.
+  - Don't restate what well-named code already says.
+  - Format: 4-space indent, 100 char line length (ruff config), trailing commas in multi-line collections, `ruff format` authoritative.
 
 ---
 

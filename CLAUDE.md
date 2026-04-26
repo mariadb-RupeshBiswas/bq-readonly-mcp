@@ -31,6 +31,19 @@ This is a public repo. The author is fine with their email being public, but **n
 
 `tests/test_no_pii.py` enforces this with a positive allowlist. If you're tempted to add a "real" example, use a Google public-data project instead (`bigquery-public-data.samples.shakespeare`, `bigquery-public-data.usa_names.usa_1910_2013`, etc.).
 
+## Code style — author preference
+
+This project's author wants **human-readable code with short, precise comments** that help a future developer understand intent at a glance. This overrides the typical "no comments unless non-obvious" default.
+
+- ✅ Add brief comments above non-trivial blocks explaining WHAT the block does (one short line, not a paragraph).
+- ✅ Add WHY comments where the choice would surprise a reader (workarounds, invariants, hidden constraints).
+- ✅ Comment edge cases inside conditional branches when the condition isn't self-explanatory.
+- ✅ Keep comments **short and precise** — a clear sentence is better than a clear paragraph.
+- ❌ Don't restate what well-named code already says (`# increment counter` above `counter += 1`).
+- ❌ Don't write multi-paragraph docstrings; one or two lines is plenty.
+
+Format: 4-space indent, line length 100 (per `ruff` config), trailing commas in multi-line collections, blank lines between logical blocks. `ruff format` is authoritative.
+
 ## Tech stack
 
 - **Build:** `uv` + `hatchling`
