@@ -59,7 +59,19 @@ def test_warn_printed_when_no_allowlist(capsys):
     _warn_if_no_allowlist(cfg, bq)
     err = capsys.readouterr().err
     assert "WARNING" in err
-    assert "ds_a" in err or "2 datasets" in err or "2" in err
+    assert "ds_a" in err
+
+
+def test_warn_truncates_long_dataset_list(capsys):
+    # More than 3 datasets: only first 3 shown, rest summarized
+    names = [f"ds_{i:02d}" for i in range(10)]
+    cfg = _make_cfg(allowed_datasets=None)
+    bq = _make_bq(names)
+    _warn_if_no_allowlist(cfg, bq)
+    err = capsys.readouterr().err
+    assert "and 7 more" in err
+    # Full list must NOT appear verbatim (would be too long to paste safely)
+    assert "ds_09" not in err
 
 
 def test_warn_silent_when_allowlist_set(capsys):

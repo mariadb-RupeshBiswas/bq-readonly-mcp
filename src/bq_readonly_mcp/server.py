@@ -59,8 +59,15 @@ def build_tool_registry() -> list[dict[str, Any]]:
     ]
 
 
+_WARN_PREVIEW_COUNT = 3  # show at most this many dataset IDs in the warning
+
+
 def _warn_if_no_allowlist(cfg: Config, bq: BQClient) -> None:
-    """Print a clear stderr warning when no dataset allowlist is configured."""
+    """Print a clear stderr warning when no dataset allowlist is configured.
+
+    Truncates the dataset list to the first _WARN_PREVIEW_COUNT IDs to avoid
+    accidentally pasting a full dataset inventory into chat logs or tickets.
+    """
     if cfg.allowed_datasets is not None:
         return
     try:
@@ -69,12 +76,18 @@ def _warn_if_no_allowlist(cfg: Config, bq: BQClient) -> None:
         LOG.warning("could not enumerate datasets at startup: %s", exc)
         return
     ids = sorted(d.dataset_id for d in datasets)
-    example = " ".join(ids[:3]) + (" ..." if len(ids) > 3 else "")
+
+    # Truncate the preview; log the full list at DEBUG for diagnostics
+    preview = ids[:_WARN_PREVIEW_COUNT]
+    remainder = len(ids) - _WARN_PREVIEW_COUNT
+    ids_display = " ".join(preview) + (f" ... (and {remainder} more)" if remainder > 0 else "")
+    LOG.debug("all visible datasets: %s", ids)
+
     print(
         f"WARNING: no --datasets allowlist configured. "
         f"This server can read all {len(ids)} datasets visible to your ADC identity in "
-        f"project {cfg.project!r}: {ids}\n"
-        f"To restrict, restart with: --datasets {example}",
+        f"project {cfg.project!r}: {ids_display}\n"
+        f"To restrict, restart with: --datasets {ids_display.split(' ...')[0]}",
         file=sys.stderr,
     )
 
