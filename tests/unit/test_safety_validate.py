@@ -67,3 +67,13 @@ def test_empty_rejected():
 def test_only_whitespace_rejected():
     with pytest.raises(SafetyError):
         validate_select_query("   \n  ")
+
+
+def test_backticked_path_with_reserved_word_allowed():
+    # The backticked identifier should NOT trigger DML/DDL keyword check
+    validate_select_query("SELECT * FROM `proj.ds.UPDATE_LOG`")
+
+
+def test_real_bigquery_public_data_query_allowed():
+    # The canonical "every real BigQuery query" shape with backticked path
+    validate_select_query("SELECT word FROM `bigquery-public-data.samples.shakespeare`")

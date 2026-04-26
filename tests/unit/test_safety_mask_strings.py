@@ -34,3 +34,17 @@ def test_empty_input():
 def test_no_strings_unchanged():
     sql = "SELECT 1 + 2 FROM dataset.table"
     assert mask_string_literals(sql) == sql
+
+
+def test_masks_backtick_content():
+    out = mask_string_literals("SELECT * FROM `proj.ds.UPDATE_LOG`")
+    assert "UPDATE" not in out
+    assert out.startswith("SELECT * FROM `")
+    assert out.endswith("`")
+
+
+def test_backslash_escape_inside_string_does_not_close_early():
+    # 'foo\'bar' is one string; outside-string content begins after the closing quote
+    out = mask_string_literals(r"SELECT 'foo\'bar' AS x")
+    # Whole literal masked; AS is outside, so it stays
+    assert " AS x" in out

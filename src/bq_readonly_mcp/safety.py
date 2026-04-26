@@ -13,22 +13,32 @@ import re
 def strip_comments(sql: str) -> str:
     """Remove SQL line and block comments while preserving string literals.
 
-    Walks character by character, tracking whether we're inside a single- or
-    double-quoted string (with doubled-quote escape support). Outside strings,
-    `--` runs to end-of-line and `/* ... */` is replaced with a single space.
+    Walks character by character, tracking whether we're inside a single-,
+    double-, or backtick-quoted region (with backslash-escape and
+    doubled-quote-escape support). Outside strings, `--` runs to end-of-line
+    and `/* ... */` is replaced with a single space.
     """
     out: list[str] = []
     i = 0
     n = len(sql)
     in_single = False
     in_double = False
+    in_backtick = False
 
     while i < n:
         c = sql[i]
 
-        # Inside a single-quoted string: pass through, watch for closer or doubled-quote escape
+        # Inside a single-quoted string: pass through, handle backslash and doubled-quote escape
         if in_single:
             out.append(c)
+            if c == "\\":
+                # Backslash consumes the next char verbatim — it cannot close the string
+                if i + 1 < n:
+                    out.append(sql[i + 1])
+                    i += 2
+                else:
+                    i += 1
+                continue
             if c == "'":
                 if i + 1 < n and sql[i + 1] == "'":
                     out.append("'")
@@ -41,12 +51,34 @@ def strip_comments(sql: str) -> str:
         # Inside a double-quoted string: same logic mirrored
         if in_double:
             out.append(c)
+            if c == "\\":
+                if i + 1 < n:
+                    out.append(sql[i + 1])
+                    i += 2
+                else:
+                    i += 1
+                continue
             if c == '"':
                 if i + 1 < n and sql[i + 1] == '"':
                     out.append('"')
                     i += 2
                     continue
                 in_double = False
+            i += 1
+            continue
+
+        # Inside a backtick identifier: pass through verbatim, handle backslash escape
+        if in_backtick:
+            out.append(c)
+            if c == "\\":
+                if i + 1 < n:
+                    out.append(sql[i + 1])
+                    i += 2
+                else:
+                    i += 1
+                continue
+            if c == "`":
+                in_backtick = False
             i += 1
             continue
 
@@ -58,6 +90,11 @@ def strip_comments(sql: str) -> str:
             continue
         if c == '"':
             in_double = True
+            out.append(c)
+            i += 1
+            continue
+        if c == "`":
+            in_backtick = True
             out.append(c)
             i += 1
             continue
@@ -83,10 +120,11 @@ def strip_comments(sql: str) -> str:
 
 
 def mask_string_literals(sql: str) -> str:
-    """Replace contents of single- and double-quoted string literals with `X`.
+    """Replace contents of single-, double-, and backtick-quoted regions with `X`.
 
     Used before keyword scanning so that a value like `'INSERT'` inside a
-    string literal does not trigger DML/DDL rejection. Preserves the
+    string literal (or a reserved word inside a backtick identifier like
+    `proj.ds.UPDATE_LOG`) does not trigger DML/DDL rejection. Preserves the
     surrounding quote characters and overall length structure.
     """
     out: list[str] = []
@@ -94,12 +132,22 @@ def mask_string_literals(sql: str) -> str:
     n = len(sql)
     in_single = False
     in_double = False
+    in_backtick = False
 
     while i < n:
         c = sql[i]
 
-        # Inside single-quoted string: replace contents with X, watch for closer/escape
+        # Inside single-quoted string: replace contents with X, handle backslash and doubled-quote
         if in_single:
+            if c == "\\":
+                # Backslash escape: consume two chars as X X so the quote after \ isn't the closer
+                out.append("X")
+                if i + 1 < n:
+                    out.append("X")
+                    i += 2
+                else:
+                    i += 1
+                continue
             if c == "'":
                 if i + 1 < n and sql[i + 1] == "'":
                     out.append("X")
@@ -115,6 +163,14 @@ def mask_string_literals(sql: str) -> str:
 
         # Inside double-quoted string: same logic mirrored
         if in_double:
+            if c == "\\":
+                out.append("X")
+                if i + 1 < n:
+                    out.append("X")
+                    i += 2
+                else:
+                    i += 1
+                continue
             if c == '"':
                 if i + 1 < n and sql[i + 1] == '"':
                     out.append("X")
@@ -122,6 +178,25 @@ def mask_string_literals(sql: str) -> str:
                     continue
                 out.append('"')
                 in_double = False
+                i += 1
+                continue
+            out.append("X")
+            i += 1
+            continue
+
+        # Inside a backtick identifier: mask contents so reserved words inside don't match
+        if in_backtick:
+            if c == "\\":
+                out.append("X")
+                if i + 1 < n:
+                    out.append("X")
+                    i += 2
+                else:
+                    i += 1
+                continue
+            if c == "`":
+                out.append("`")
+                in_backtick = False
                 i += 1
                 continue
             out.append("X")
@@ -136,6 +211,11 @@ def mask_string_literals(sql: str) -> str:
             continue
         if c == '"':
             in_double = True
+            out.append(c)
+            i += 1
+            continue
+        if c == "`":
+            in_backtick = True
             out.append(c)
             i += 1
             continue
