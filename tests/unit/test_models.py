@@ -96,7 +96,7 @@ def test_partitioning_info_validates_type():
 def test_query_result_round_trip():
     r = QueryResult(
         rows=[{"a": 1}],
-        schema=[ColumnSchema(name="a", type="INT64", mode="NULLABLE")],
+        column_schema=[ColumnSchema(name="a", type="INT64", mode="NULLABLE")],
         total_bytes_processed=100,
         total_bytes_billed=10485760,
         cache_hit=False,
@@ -105,3 +105,4 @@ def test_query_result_round_trip():
     )
     dumped = r.model_dump()
     assert dumped["rows"] == [{"a": 1}]
+    assert dumped["column_schema"][0]["name"] == "a"

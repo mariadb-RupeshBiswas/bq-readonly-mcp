@@ -11,7 +11,7 @@ def make_bq():
     bq = MagicMock()
     bq.run_query.return_value = QueryResult(
         rows=[{"x": 1}],
-        schema=[],
+        column_schema=[],
         total_bytes_processed=100,
         total_bytes_billed=0,
         cache_hit=False,

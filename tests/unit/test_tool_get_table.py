@@ -19,7 +19,7 @@ def test_bundles_metadata_columns_and_samples():
     bq.describe_columns.return_value = [ColumnSchema(name="x", type="INT64", mode="NULLABLE")]
     bq.run_query.return_value = QueryResult(
         rows=[{"x": 1}],
-        schema=[],
+        column_schema=[],
         total_bytes_processed=1,
         total_bytes_billed=0,
         cache_hit=False,

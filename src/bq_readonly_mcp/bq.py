@@ -170,7 +170,7 @@ class BQClient:
 
         return QueryResult(
             rows=rows,
-            schema=[
+            column_schema=[
                 ColumnSchema(
                     name=f.name,
                     type=f.field_type,
