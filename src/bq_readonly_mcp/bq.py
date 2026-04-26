@@ -137,7 +137,8 @@ class BQClient:
         bytes_proc = job.total_bytes_processed or 0
         return CostEstimate(
             total_bytes_processed=bytes_proc,
-            estimated_usd=round(bytes_proc * USD_PER_BYTE, 6),
+            # Use 10 decimal places so small byte counts (< 1 TiB) remain non-zero
+            estimated_usd=round(bytes_proc * USD_PER_BYTE, 10),
             would_be_blocked=bytes_proc > max_bytes_billed,
         )
 
@@ -178,7 +179,8 @@ class BQClient:
                 )
                 for f in job.schema or []
             ],
-            total_bytes_processed=job.total_bytes_processed or 0,
+            # Use dryrun bytes_proc — the real job may report None until fully settled
+            total_bytes_processed=bytes_proc,
             total_bytes_billed=job.total_bytes_billed or 0,
             cache_hit=bool(job.cache_hit),
             job_id=job.job_id,

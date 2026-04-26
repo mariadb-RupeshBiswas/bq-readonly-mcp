@@ -103,7 +103,7 @@ class TableMetadata(_StrictModel):
 
 class QueryResult(_StrictModel):
     rows: list[dict[str, Any]]
-    schema: list[ColumnSchema]
+    schema: list[ColumnSchema]  # type: ignore[assignment]  # shadows BaseModel.schema classmethod
     total_bytes_processed: int
     total_bytes_billed: int
     cache_hit: bool
