@@ -12,7 +12,15 @@ from typing import Any
 
 from google.cloud import bigquery
 
-from .models import DatasetInfo, TableInfo
+from .models import (
+    ColumnSchema,
+    CostEstimate,
+    DatasetInfo,
+    PartitioningInfo,
+    QueryResult,
+    TableInfo,
+    TableMetadata,
+)
 
 
 class DatasetNotAllowedError(PermissionError):
@@ -78,8 +86,6 @@ class BQClient:
     # ----- table-level introspection -----
 
     def get_table_metadata(self, dataset_id: str, table_id: str):
-        from .models import PartitioningInfo, TableMetadata
-
         self._check_dataset(dataset_id)
         ref = f"{self.client.project}.{dataset_id}.{table_id}"
         t = self.client.get_table(ref)
@@ -113,8 +119,6 @@ class BQClient:
         )
 
     def describe_columns(self, dataset_id: str, table_id: str):
-        from .models import ColumnSchema
-
         self._check_dataset(dataset_id)
         ref = f"{self.client.project}.{dataset_id}.{table_id}"
         t = self.client.get_table(ref)
@@ -131,8 +135,6 @@ class BQClient:
     # ----- query execution -----
 
     def estimate_query_cost(self, query: str, *, max_bytes_billed: int):
-        from .models import CostEstimate
-
         job = self._dry_run(query)
         bytes_proc = job.total_bytes_processed or 0
         return CostEstimate(
@@ -143,10 +145,6 @@ class BQClient:
         )
 
     def run_query(self, query: str, *, max_bytes_billed: int):
-        from google.cloud import bigquery as bq
-
-        from .models import ColumnSchema, QueryResult
-
         dryrun_job = self._dry_run(query)
 
         # Allowlist enforcement on referenced tables
@@ -164,7 +162,7 @@ class BQClient:
                 f"query estimate {bytes_proc} bytes exceeds cap {max_bytes_billed}"
             )
 
-        config = bq.QueryJobConfig(maximum_bytes_billed=max_bytes_billed)
+        config = bigquery.QueryJobConfig(maximum_bytes_billed=max_bytes_billed)
         job = self.client.query(query, job_config=config)
         rows = [dict(row.items()) for row in job.result()]
 
@@ -188,7 +186,5 @@ class BQClient:
         )
 
     def _dry_run(self, query: str) -> Any:
-        from google.cloud import bigquery as bq
-
-        config = bq.QueryJobConfig(dry_run=True, use_query_cache=False)
+        config = bigquery.QueryJobConfig(dry_run=True, use_query_cache=False)
         return self.client.query(query, job_config=config)
