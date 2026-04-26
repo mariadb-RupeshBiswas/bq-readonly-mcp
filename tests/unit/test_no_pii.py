@@ -231,6 +231,10 @@ EXTRA_FALSE_POSITIVES = {
     "modelcontextprotocol",
     "google-sheets",
     "enable-gdrive-access",
+    # These appear only in comments/docstrings within this file itself
+    "character-class",
+    "internal-data",
+    "my-company-prod",
 }
 
 
