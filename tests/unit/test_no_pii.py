@@ -127,6 +127,7 @@ ALLOWED = {
     "check-url",
     "no-create-gitignore",
     "your-token",
+    "storage-write",
     "on-demand",
     "billing-authoritative",
     "bytes-billed",
