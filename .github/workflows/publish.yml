@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write  # Required for OIDC trusted publishing to PyPI
 
 env:
   # Force JS actions onto Node 24 ahead of GitHub's June 2026 mandatory flip;
@@ -131,8 +132,12 @@ jobs:
           echo "${{ steps.publish_status.outputs.reason }}"
           exit 1
 
-      - name: Publish to PyPI
+      # Trusted publishing: PyPI is configured (via Account → Publishing) to trust
+      # this exact repo + workflow + environment. No token needed; the OIDC
+      # id-token is exchanged for a short-lived publish credential at runtime.
+      - name: Publish to PyPI (trusted publishing)
         if: steps.publish_status.outputs.publish_action == 'publish'
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI__TOKEN__ }}
-        run: uv publish --check-url https://pypi.org/simple/
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          skip-existing: true
