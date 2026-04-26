@@ -14,8 +14,10 @@ import sys
 from typing import Any
 
 import mcp.server.stdio
+from google.api_core.exceptions import GoogleAPIError
 from mcp.server import Server
 from mcp.types import TextContent, Tool
+from pydantic import ValidationError
 
 from .auth import AuthError, build_bigquery_client
 from .bq import BQClient, CostExceededError, DatasetNotAllowedError
@@ -130,6 +132,14 @@ async def _serve(cfg: Config, bq: BQClient) -> None:
         except (SafetyError, CostExceededError, DatasetNotAllowedError, ValueError) as exc:
             # Return structured errors as text so the MCP client sees them
             return [TextContent(type="text", text=f"error: {exc}")]
+        except ValidationError as exc:
+            return [TextContent(type="text", text=f"error: invalid input: {exc}")]
+        except GoogleAPIError as exc:
+            return [TextContent(type="text", text=f"error: BigQuery API error: {exc}")]
+        except Exception as exc:
+            # Last-resort catch: keeps the MCP loop alive; logs full traceback for debugging
+            LOG.exception("unexpected error in tool %s", name)
+            return [TextContent(type="text", text=f"error: unexpected error ({type(exc).__name__})")]
 
         return [TextContent(type="text", text=json.dumps(result, default=str))]
 
