@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+env:
+  # Force JS actions onto Node 24 ahead of GitHub's June 2026 mandatory flip;
+  # lets us verify the toolchain on Node 24 before the deadline.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   publish:
     if: github.ref == 'refs/heads/main' && github.ref_protected == true
