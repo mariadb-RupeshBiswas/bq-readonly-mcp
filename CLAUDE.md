@@ -123,6 +123,6 @@ uv run mypy src
 3. `Publish` workflow runs on push to `main`, idempotent: it'll skip if the version is already on PyPI.
 4. Smoke test: `uvx bq-readonly-mcp --help` after the run completes.
 
-## Related repos in the same author's ecosystem
+## Related projects by the same author
 
-- `mariadb-RupeshBiswas/google-sheets-mcp` (`g-sheet-mcp` on PyPI) — read-only Google Sheets MCP, similar shape, used as a structural reference for this project.
+- `g-sheet-mcp` on PyPI — read-only Google Sheets MCP, similar shape, used as a structural reference for this project.
