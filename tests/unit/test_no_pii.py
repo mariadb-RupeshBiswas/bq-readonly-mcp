@@ -199,6 +199,8 @@ ALLOWED = {
     "raw-string-escape",
     "non-empty",
     "module-level",
+    "dry-runs",
+    "known-large",
     "uv-cache",
     "egg-info",
     "single-process",
