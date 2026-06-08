@@ -1,0 +1,60 @@
+name: security
+
+# Supply-chain scanning that works WITHOUT GitHub Advanced Security.
+# pip-audit (dependency CVEs) is BLOCKING — fails the check on any known CVE.
+# zizmor (Actions security lint) stays advisory. CodeQL / dependency-review
+# require GHAS on private repos (or default setup on public).
+# To accept a specific unfixable advisory, add it to pip-audit's `ignore-vulns`.
+on:
+  pull_request:
+  schedule:
+    - cron: '27 4 * * 1'  # weekly Mon re-scan with latest queries/advisories
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zizmor:
+    name: zizmor (Actions security lint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      - name: zizmor (advisory)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: uvx zizmor@1.25.2 .
+
+  pip-audit:
+    name: pip-audit (dependency CVE scan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      # pip-audit can't read uv.lock directly; export the locked set first.
+      - name: Export locked dependencies
+        run: uv export --frozen --no-emit-project --no-dev -o requirements-audit.txt
+      - name: pip-audit (blocking - fails on any known CVE)
+        uses: pypa/gh-action-pip-audit@1220774d901786e6f652ae159f7b6bc8fea6d266 # v1.1.0
+        with:
+          inputs: requirements-audit.txt
+          # To accept an unfixable advisory, list IDs here (newline-separated), e.g.:
+          # ignore-vulns: |
+          #   GHSA-xxxx-xxxx-xxxx
