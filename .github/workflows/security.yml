@@ -56,4 +56,4 @@ jobs:
       # OSV-backed; blocks on any known CVE in non-dev deps.
       # To accept an unfixable advisory:  uv audit --frozen --no-dev --ignore GHSA-xxxx-xxxx-xxxx
       - name: uv audit (blocking - fails on any known CVE)
-        run: uv audit --frozen --no-dev
+        run: uv audit --frozen --no-dev --preview-features audit-command
