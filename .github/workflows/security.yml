@@ -1,14 +1,14 @@
 name: security
 
 # Supply-chain scanning that works WITHOUT GitHub Advanced Security.
-# pip-audit (dependency CVEs) is BLOCKING — fails the check on any known CVE.
+# uv audit (OSV-backed CVE scan, native to uv) is BLOCKING.
 # zizmor (Actions security lint) stays advisory. CodeQL / dependency-review
 # require GHAS on private repos (or default setup on public).
-# To accept a specific unfixable advisory, add it to pip-audit's `ignore-vulns`.
+# Pin uv version while `uv audit` remains in preview.
 on:
   pull_request:
   schedule:
-    - cron: '27 4 * * 1'  # weekly Mon re-scan with latest queries/advisories
+    - cron: '27 4 * * 1'  # weekly Mon
   workflow_dispatch:
 
 permissions: {}
@@ -30,14 +30,16 @@ jobs:
           persist-credentials: false
       - name: Install uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.19"
       - name: zizmor (advisory)
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: uvx zizmor@1.25.2 .
 
-  pip-audit:
-    name: pip-audit (dependency CVE scan)
+  uv-audit:
+    name: uv audit (dependency CVE scan)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -48,13 +50,10 @@ jobs:
           persist-credentials: false
       - name: Install uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
-      # pip-audit can't read uv.lock directly; export the locked set first.
-      - name: Export locked dependencies
-        run: uv export --frozen --no-emit-project --no-dev -o requirements-audit.txt
-      - name: pip-audit (blocking - fails on any known CVE)
-        uses: pypa/gh-action-pip-audit@1220774d901786e6f652ae159f7b6bc8fea6d266 # v1.1.0
         with:
-          inputs: requirements-audit.txt
-          # To accept an unfixable advisory, list IDs here (newline-separated), e.g.:
-          # ignore-vulns: |
-          #   GHSA-xxxx-xxxx-xxxx
+          version: "0.11.19"
+      # uv audit reads uv.lock directly (no pip-audit export step needed).
+      # OSV-backed; blocks on any known CVE in non-dev deps.
+      # To accept an unfixable advisory:  uv audit --frozen --no-dev --ignore GHSA-xxxx-xxxx-xxxx
+      - name: uv audit (blocking - fails on any known CVE)
+        run: uv audit --frozen --no-dev
