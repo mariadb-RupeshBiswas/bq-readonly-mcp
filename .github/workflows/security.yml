@@ -1,0 +1,59 @@
+name: security
+
+# Supply-chain scanning that works WITHOUT GitHub Advanced Security.
+# uv audit (OSV-backed CVE scan, native to uv) is BLOCKING.
+# zizmor (Actions security lint) stays advisory. CodeQL / dependency-review
+# require GHAS on private repos (or default setup on public).
+# Pin uv version while `uv audit` remains in preview.
+on:
+  pull_request:
+  schedule:
+    - cron: '27 4 * * 1'  # weekly Mon
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zizmor:
+    name: zizmor (Actions security lint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.19"
+      - name: zizmor (advisory)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: uvx zizmor@1.25.2 .
+
+  uv-audit:
+    name: uv audit (dependency CVE scan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.11.19"
+      # uv audit reads uv.lock directly (no pip-audit export step needed).
+      # OSV-backed; blocks on any known CVE in non-dev deps.
+      # To accept an unfixable advisory:  uv audit --frozen --no-dev --ignore GHSA-xxxx-xxxx-xxxx
+      - name: uv audit (blocking - fails on any known CVE)
+        run: uv audit --frozen --no-dev
