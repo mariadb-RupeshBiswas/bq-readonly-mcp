@@ -230,6 +230,7 @@ ALLOWED = {
 # Tokens excluded from scanning by file prefix
 EXCLUDE_PREFIXES = (
     ".git/",
+    ".github/workflows/",  # GitHub Actions vocabulary, not project IDs
     "dist/",
     ".venv/",
     "build/",
