@@ -7,6 +7,7 @@ name: security
 # Pin uv version while `uv audit` remains in preview.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   schedule:
     - cron: '27 4 * * 1'  # weekly Mon
   workflow_dispatch:
@@ -20,6 +21,7 @@ concurrency:
 jobs:
   zizmor:
     name: zizmor (Actions security lint)
+    if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -40,6 +42,7 @@ jobs:
 
   uv-audit:
     name: uv audit (dependency CVE scan)
+    if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
