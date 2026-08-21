@@ -41,12 +41,12 @@ jobs:
         with:
           python-version: "3.11"
 
-      # cache: false — publish job must not restore a potentially-poisoned
+      # enable-cache: false — publish job must not restore a potentially-poisoned
       # cache before building release artifacts (zizmor cache-poisoning).
       - name: Set up uv
         uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9  # v7
         with:
-          cache: false
+          enable-cache: false
 
       - name: Build distributions
         run: uv build --no-create-gitignore

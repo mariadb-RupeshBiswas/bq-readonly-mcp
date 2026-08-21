@@ -2,6 +2,9 @@
 
 
 def test_package_imports():
+    from importlib.metadata import version
+
     import bq_readonly_mcp
 
-    assert bq_readonly_mcp.__version__ == "0.1.2"
+    # compare to installed metadata so a bump can't drift from pyproject
+    assert bq_readonly_mcp.__version__ == version("bq-readonly-mcp")
