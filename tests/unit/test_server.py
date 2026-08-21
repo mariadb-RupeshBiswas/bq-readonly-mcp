@@ -187,3 +187,50 @@ async def test_dispatch_validation_error_returns_error_message():
         result = await dispatch_tool("list_datasets", {}, cfg, bq)
 
     assert "error: invalid input:" in result[0].text
+
+
+@pytest.mark.asyncio
+async def test_dispatch_rebuilds_client_and_retries_on_refresh_error():
+    """RefreshError on first call -> rebuild client from cfg, retry succeeds."""
+    from google.auth.exceptions import RefreshError
+
+    cfg = _make_cfg()
+    bq = _make_bq()
+    new_client = MagicMock()
+
+    with (
+        patch(
+            "bq_readonly_mcp.tools.list_datasets.handle",
+            side_effect=[RefreshError("token expired"), {"ok": True}],
+        ) as mock_handle,
+        patch(
+            "bq_readonly_mcp.server.build_bigquery_client", return_value=new_client
+        ) as mock_build,
+    ):
+        result = await dispatch_tool("list_datasets", {}, cfg, bq)
+
+    assert mock_handle.call_count == 2
+    mock_build.assert_called_once_with(cfg)
+    assert bq.client is new_client
+    assert json.loads(result[0].text) == {"ok": True}
+
+
+@pytest.mark.asyncio
+async def test_dispatch_auth_error_after_retry_returns_expired_message():
+    """RefreshError on both attempts -> single rebuild, friendly expired message."""
+    from google.auth.exceptions import RefreshError
+
+    cfg = _make_cfg()
+    bq = _make_bq()
+
+    with (
+        patch(
+            "bq_readonly_mcp.tools.list_datasets.handle",
+            side_effect=RefreshError("still expired"),
+        ) as mock_handle,
+        patch("bq_readonly_mcp.server.build_bigquery_client", return_value=MagicMock()),
+    ):
+        result = await dispatch_tool("list_datasets", {}, cfg, bq)
+
+    assert mock_handle.call_count == 2
+    assert "authentication has expired" in result[0].text
