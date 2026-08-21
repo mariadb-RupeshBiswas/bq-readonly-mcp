@@ -111,81 +111,88 @@ async def dispatch_tool(
     spinning up the full MCP stdio server.
     """
     result: Any
-    try:
-        if name == list_datasets.NAME:
-            result = await asyncio.to_thread(list_datasets.handle, arguments, bq=bq)
-        elif name == list_tables.NAME:
-            result = await asyncio.to_thread(list_tables.handle, arguments, bq=bq)
-        elif name == get_table_metadata.NAME:
-            result = await asyncio.to_thread(get_table_metadata.handle, arguments, bq=bq)
-        elif name == describe_columns.NAME:
-            result = await asyncio.to_thread(describe_columns.handle, arguments, bq=bq)
-        elif name == get_table.NAME:
-            result = await asyncio.to_thread(
-                get_table.handle,
-                arguments,
-                bq=bq,
-                default_sample_rows=cfg.sample_rows,
-                max_bytes_billed=cfg.max_bytes_billed,
+    # attempt 1 = normal call; attempt 2 only after rebuilding client on auth expiry
+    for attempt in (1, 2):
+        try:
+            result = await _invoke(name, arguments, cfg, bq)
+        except ValidationError as exc:
+            # ValidationError is a subclass of ValueError; must be checked first
+            return [TextContent(type="text", text=f"error: invalid input: {exc}")]
+        except (SafetyError, CostExceededError, DatasetNotAllowedError, ValueError) as exc:
+            # Return structured errors as text so the MCP client sees them
+            return [TextContent(type="text", text=f"error: {exc}")]
+        except (RefreshError, Unauthenticated, GoogleAPIError) as exc:
+            # 401 can arrive as a generic GoogleAPIError, not just Unauthenticated
+            auth_expired = isinstance(exc, (RefreshError, Unauthenticated)) or (
+                getattr(exc, "code", None) == 401 or "401" in str(exc)
             )
-        elif name == run_query.NAME:
-            result = await asyncio.to_thread(
-                run_query.handle,
-                arguments,
-                bq=bq,
-                default_limit=cfg.default_limit,
-                max_limit=cfg.max_limit,
-                max_bytes_billed=cfg.max_bytes_billed,
-            )
-        elif name == estimate_query_cost.NAME:
-            result = await asyncio.to_thread(
-                estimate_query_cost.handle,
-                arguments,
-                bq=bq,
-                max_bytes_billed=cfg.max_bytes_billed,
-            )
-        else:
-            raise ValueError(f"unknown tool: {name!r}")
-    except ValidationError as exc:
-        # ValidationError is a subclass of ValueError; must be checked first
-        return [TextContent(type="text", text=f"error: invalid input: {exc}")]
-    except (SafetyError, CostExceededError, DatasetNotAllowedError, ValueError) as exc:
-        # Return structured errors as text so the MCP client sees them
-        return [TextContent(type="text", text=f"error: {exc}")]
-    except (RefreshError, Unauthenticated) as exc:
-        # ADC tokens can expire mid-session (gcloud reauth required).
-        # Return an actionable message so the LLM/user knows the next step
-        # rather than a raw stack trace.
-        LOG.warning("auth refresh failure: %s", exc)
-        return [
-            TextContent(
-                type="text",
-                text=(
-                    "error: authentication has expired. Run "
-                    "`gcloud auth application-default login` and retry. "
-                    f"(underlying: {exc})"
-                ),
-            )
-        ]
-    except GoogleAPIError as exc:
-        # Detect HTTP 401 even when the API library wraps it as a generic GoogleAPIError
-        if getattr(exc, "code", None) == 401 or "401" in str(exc):
+            if not auth_expired:
+                return [TextContent(type="text", text=f"error: BigQuery API error: {exc}")]
+            if attempt == 1:
+                # `gcloud auth application-default login` rewrites the ADC file
+                # but the credentials already in memory keep the old refresh token.
+                # Re-read the file into a fresh client and retry once.
+                LOG.warning("auth expired, rebuilding BigQuery client from ADC: %s", exc)
+                try:
+                    bq.client = build_bigquery_client(cfg)
+                    continue
+                except AuthError as rebuild_exc:
+                    LOG.warning("client rebuild failed: %s", rebuild_exc)
             return [
                 TextContent(
                     type="text",
                     text=(
-                        "error: BigQuery rejected the request as unauthenticated. "
-                        "Try `gcloud auth application-default login` to refresh ADC."
+                        "error: authentication has expired. Run "
+                        "`gcloud auth application-default login` and retry. "
+                        f"(underlying: {exc})"
                     ),
                 )
             ]
-        return [TextContent(type="text", text=f"error: BigQuery API error: {exc}")]
-    except Exception as exc:
-        # Last-resort catch: keeps the MCP loop alive; logs full traceback for debugging
-        LOG.exception("unexpected error in tool %s", name)
-        return [TextContent(type="text", text=f"error: unexpected error ({type(exc).__name__})")]
+        except Exception as exc:
+            # Last-resort catch: keeps the MCP loop alive; logs full traceback for debugging
+            LOG.exception("unexpected error in tool %s", name)
+            return [
+                TextContent(type="text", text=f"error: unexpected error ({type(exc).__name__})")
+            ]
+        return [TextContent(type="text", text=json.dumps(result, default=str))]
+    raise AssertionError("unreachable")  # loop always returns or continues once
 
-    return [TextContent(type="text", text=json.dumps(result, default=str))]
+
+async def _invoke(name: str, arguments: dict[str, Any], cfg: Config, bq: BQClient) -> Any:
+    """Route one tool call to its handler; raises on any failure."""
+    if name == list_datasets.NAME:
+        return await asyncio.to_thread(list_datasets.handle, arguments, bq=bq)
+    if name == list_tables.NAME:
+        return await asyncio.to_thread(list_tables.handle, arguments, bq=bq)
+    if name == get_table_metadata.NAME:
+        return await asyncio.to_thread(get_table_metadata.handle, arguments, bq=bq)
+    if name == describe_columns.NAME:
+        return await asyncio.to_thread(describe_columns.handle, arguments, bq=bq)
+    if name == get_table.NAME:
+        return await asyncio.to_thread(
+            get_table.handle,
+            arguments,
+            bq=bq,
+            default_sample_rows=cfg.sample_rows,
+            max_bytes_billed=cfg.max_bytes_billed,
+        )
+    if name == run_query.NAME:
+        return await asyncio.to_thread(
+            run_query.handle,
+            arguments,
+            bq=bq,
+            default_limit=cfg.default_limit,
+            max_limit=cfg.max_limit,
+            max_bytes_billed=cfg.max_bytes_billed,
+        )
+    if name == estimate_query_cost.NAME:
+        return await asyncio.to_thread(
+            estimate_query_cost.handle,
+            arguments,
+            bq=bq,
+            max_bytes_billed=cfg.max_bytes_billed,
+        )
+    raise ValueError(f"unknown tool: {name!r}")
 
 
 async def _serve(cfg: Config, bq: BQClient) -> None:
