@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+- Lockfile: `urllib3` 2.7.0 to 2.8.0 and `pyjwt` 2.13.0 to 2.15.1 for GHSA-8988-9cw3-xx77, GHSA-gh4c-6fx4-qh6g, GHSA-vxq7-64xx-v4gw and the pyjwt key-confusion advisories. Both are transitive; installs from the index already resolve newer versions.
+
 ## [0.1.4] — 2026-08-21
 
 ### Fixed
