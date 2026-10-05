@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
-- Lockfile: `urllib3` 2.7.0 to 2.8.0 and `pyjwt` 2.13.0 to 2.15.1 for GHSA-8988-9cw3-xx77, GHSA-gh4c-6fx4-qh6g, GHSA-vxq7-64xx-v4gw and the pyjwt key-confusion advisories. Both are transitive; installs from the index already resolve newer versions.
+- Lockfile: transitive HTTP and JWT libraries bumped to their patched releases for published security advisories. Installs from the index already resolve the patched versions.
 
 ## [0.1.4] — 2026-08-21
 
