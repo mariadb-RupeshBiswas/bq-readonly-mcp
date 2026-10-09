@@ -370,4 +370,5 @@ def inject_limit(sql: str, limit: int) -> str:
     body = sql.rstrip()
     if body.endswith(";"):
         body = body[:-1].rstrip()
-    return f"{body} LIMIT {limit}"
+    # Newline ends a trailing `--` comment, else the comment swallows the LIMIT.
+    return f"{body}\nLIMIT {limit}"

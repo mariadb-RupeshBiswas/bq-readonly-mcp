@@ -2,7 +2,7 @@
 
 import pytest
 
-from bq_readonly_mcp.safety import inject_limit
+from bq_readonly_mcp.safety import has_outer_limit, inject_limit
 
 
 def test_injects_when_missing():
@@ -17,7 +17,17 @@ def test_no_injection_when_present():
 
 def test_strips_trailing_semicolon_before_injection():
     out = inject_limit("SELECT * FROM t;", limit=50)
-    assert out == "SELECT * FROM t LIMIT 50"
+    assert out == "SELECT * FROM t\nLIMIT 50"
+
+
+def test_trailing_line_comment_does_not_swallow_limit():
+    out = inject_limit("SELECT * FROM t -- note", limit=50)
+    assert has_outer_limit(out)
+
+
+def test_trailing_block_comment_keeps_limit():
+    out = inject_limit("SELECT * FROM t /* note */", limit=50)
+    assert has_outer_limit(out)
 
 
 def test_preserves_subquery_limit():
