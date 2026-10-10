@@ -71,7 +71,7 @@ def build_config(argv: list[str], env: Mapping[str, str]) -> Config:
         type=_positive_int,
         default=_env_positive_int(
             env, "BIGQUERY_MAX_BYTES_BILLED", 1_073_741_824
-        ),  # 1 GB default cap
+        ),  # 1 GiB default cap
     )
     parser.add_argument(
         "--sample-rows",

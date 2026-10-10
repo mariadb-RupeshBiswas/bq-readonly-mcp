@@ -390,7 +390,7 @@ The server will refuse to list or query any dataset not in this list.
 
 ### Raise the cost cap for large tables
 
-The default bytes-billed cap is 1 GB per query. Raise it when working with
+The default bytes-billed cap is 1 GiB per query. Raise it when working with
 large tables:
 
 ```json

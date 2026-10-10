@@ -72,7 +72,7 @@ project, or the key has been revoked.
 bytes-billed cap.
 
 **Cause:** The query's estimated cost from the dry-run exceeds `--max-bytes-billed`
-(default 1 GB = 1,073,741,824 bytes).
+(default 1 GiB = 1,073,741,824 bytes).
 
 **Fix — option A: narrow the query**
 
