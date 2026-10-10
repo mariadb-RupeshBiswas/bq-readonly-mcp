@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Auto-LIMIT is no longer swallowed by a trailing `--` comment. `SELECT 1 -- note` used to run without a LIMIT.
+- Docs: the bytes-billed cap default is 1 GiB (1,073,741,824 bytes), not 1 GB. README intro now names `--max-bytes-billed`.
 
 ### Added
 - Atheris fuzz target for the SQL safety guard (`fuzz/fuzz_safety.py`). Not part of the package or CI; run it by hand on Linux.

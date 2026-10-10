@@ -11,7 +11,7 @@
 
 ## ✨ Why this exists
 
-LLMs connected to BigQuery can accidentally scan terabytes if the MCP layer lets them run arbitrary SQL. `bq-readonly-mcp` prevents that by design: every query goes through a strict `SELECT`/`WITH`-only validator, gets an automatic `LIMIT` injected before it runs, and is priced via a dry-run before any bytes are billed. If the estimated cost exceeds the cap (default 1 GB), the query is refused outright — before a single byte hits your bill.
+LLMs connected to BigQuery can accidentally scan terabytes if the MCP layer lets them run arbitrary SQL. `bq-readonly-mcp` prevents that by design: every query goes through a strict `SELECT`/`WITH`-only validator, gets an automatic `LIMIT` injected before it runs, and is priced via a dry-run before any bytes are billed. If the estimated cost exceeds the cap (default 1 GiB, set with `--max-bytes-billed`), the query is refused outright, before a single byte hits your bill.
 
 The server runs as a local stdio process under your OS account, uses [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials), and exposes zero write operations. There is no INSERT, no UPDATE, no DELETE, no DDL — anywhere in the codebase. The only thing it can do is read, and it does that safely.
 
@@ -121,7 +121,7 @@ All flags can also be set via environment variables. CLI flags take precedence o
 | `--datasets` | `BIGQUERY_ALLOWED_DATASETS` | _(none — all allowed)_ | Space-separated dataset allowlist; comma-separated in env var |
 | `--default-limit` | `BIGQUERY_DEFAULT_LIMIT` | `50` | Rows injected by auto-LIMIT |
 | `--max-limit` | `BIGQUERY_MAX_LIMIT` | `10000` | Hard cap on per-query LIMIT |
-| `--max-bytes-billed` | `BIGQUERY_MAX_BYTES_BILLED` | `1073741824` (1 GB) | Per-query bytes-billed cap |
+| `--max-bytes-billed` | `BIGQUERY_MAX_BYTES_BILLED` | `1073741824` (1 GiB) | Per-query bytes-billed cap |
 | `--sample-rows` | `BIGQUERY_SAMPLE_ROWS` | `3` | Rows returned by `get_table` preview |
 | `--key-file` | `GOOGLE_APPLICATION_CREDENTIALS` | _(uses ADC)_ | Path to service-account JSON |
 

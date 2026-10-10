@@ -23,7 +23,7 @@ Threats explicitly mitigated:
 | Threat | Mitigation |
 |---|---|
 | LLM tries to run DML/DDL | SQL validator rejects everything except `SELECT` and `WITH` after comment stripping |
-| Prompt injection causes a cost-runaway query | Pre-flight dry-run estimates `totalBytesProcessed`; query refused if over `--max-bytes-billed` (default 1 GB). The job itself also enforces the cap server-side. |
+| Prompt injection causes a cost-runaway query | Pre-flight dry-run estimates `totalBytesProcessed`; query refused if over `--max-bytes-billed` (default 1 GiB). The job itself also enforces the cap server-side. |
 | LLM dumps a huge result into context | Auto-`LIMIT 50` injected on every query unless the caller explicitly overrides; maximum overridable limit 10,000 |
 | SQL with comments hiding dangerous statements | Comments stripped before validation; multi-statement queries rejected |
 | LLM accesses sensitive datasets | Optional `--datasets` allowlist restricts which datasets the server will surface or query |
