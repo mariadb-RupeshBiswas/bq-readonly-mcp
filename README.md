@@ -7,6 +7,8 @@
 [![Python](https://img.shields.io/pypi/pyversions/bq-readonly-mcp.svg?cacheSeconds=300)](https://pypi.org/project/bq-readonly-mcp/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
+Works with Claude Code, Claude Desktop, Cursor, Windsurf, GitHub Copilot (VS Code), Cline, Continue.dev, Zed and Gemini CLI. Runs with `uvx bq-readonly-mcp`, nothing to install.
+
 ---
 
 ## ✨ Why this exists
@@ -189,3 +191,5 @@ uv run mypy src
 ## 📜 License
 
 MIT — see [LICENSE](LICENSE)
+
+<sub>Keywords: BigQuery MCP server, read-only BigQuery for LLMs, Model Context Protocol BigQuery, BigQuery for Claude, BigQuery for Cursor, safe SQL for AI agents, BigQuery cost guard, dry-run cost estimate, Google Cloud BigQuery AI assistant.</sub>
