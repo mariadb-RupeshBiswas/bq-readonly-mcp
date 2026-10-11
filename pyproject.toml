@@ -1,13 +1,13 @@
 [project]
 name = "bq-readonly-mcp"
 version = "0.1.4"
-description = "Read-only BigQuery MCP server with auto-LIMIT, dry-run cost guard, and ADC auth — for Claude, Cursor, Windsurf, Copilot, and other MCP clients."
+description = "Read-only BigQuery MCP server with auto-LIMIT, dry-run cost guard and ADC auth, for Claude, Cursor, Windsurf, Copilot and other MCP clients."
 readme = "README.md"
 requires-python = ">=3.11"
 authors = [{ name = "Rupesh Biswas", email = "rupesh.biswas@mariadb.com" }]
 license = "MIT"
 license-files = ["LICENSE"]
-keywords = ["mcp", "bigquery", "google-cloud", "llm", "ai", "anthropic", "claude", "cursor", "windsurf", "readonly", "adc"]
+keywords = ["mcp", "mcp-server", "model-context-protocol", "bigquery", "google-bigquery", "google-cloud", "gcp", "sql", "llm", "ai", "ai-agents", "anthropic", "claude", "claude-code", "cursor", "windsurf", "copilot", "readonly", "adc"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",

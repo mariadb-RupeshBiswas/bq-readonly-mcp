@@ -255,6 +255,10 @@ EXTRA_FALSE_POSITIVES = {
     "model-context-protocol",
     "modelcontextprotocol",
     "google-sheets",
+    # PyPI keywords in pyproject.toml
+    "mcp-server",
+    "google-bigquery",
+    "ai-agents",
     "enable-gdrive-access",
     # These appear only in comments/docstrings within this file itself
     "character-class",

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Docs: the bytes-billed cap default is 1 GiB (1,073,741,824 bytes), not 1 GB. README intro now names `--max-bytes-billed`.
 
 ### Added
+- GitHub release for each new version: after a merge publishes to PyPI, the merge commit is tagged `v<version>` and a release with the sdist and wheel is created.
 - Atheris fuzz target for the SQL safety guard (`fuzz/fuzz_safety.py`). Not part of the package or CI; run it by hand on Linux.
 
 ### Security
