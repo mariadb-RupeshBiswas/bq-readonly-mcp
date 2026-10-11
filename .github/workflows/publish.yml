@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write  # Required for OIDC trusted publishing to PyPI
 
 env:
   # Force JS actions onto Node 24 ahead of GitHub's June 2026 mandatory flip;
@@ -20,6 +19,12 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.ref_protected == true
     runs-on: ubuntu-latest
     environment: pypi
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC trusted publishing to PyPI
+    outputs:
+      version: ${{ steps.publish_status.outputs.version }}
+      publish_action: ${{ steps.publish_status.outputs.publish_action }}
     concurrency:
       group: publish-${{ github.ref }}
       cancel-in-progress: false
@@ -151,3 +156,31 @@ jobs:
         with:
           packages-dir: dist/
           skip-existing: true
+
+      - name: Keep the published files for the GitHub release
+        if: steps.publish_status.outputs.publish_action == 'publish'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  # Only a version just published gets a tag and release, so each tag marks the commit PyPI built.
+  github-release:
+    needs: publish
+    if: needs.publish.outputs.publish_action == 'publish'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # create the v<version> tag and the GitHub release
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          name: dist
+          path: dist
+
+      - name: Tag the merge commit and create the release with the published files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.publish.outputs.version }}
+        run: gh release create "v$VERSION" dist/* --target "$GITHUB_SHA" --title "v$VERSION" --notes "See CHANGELOG.md for details."
