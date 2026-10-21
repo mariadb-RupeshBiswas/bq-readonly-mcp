@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Atheris fuzz target for the SQL safety guard (`fuzz/fuzz_safety.py`). Not part of the package or CI; run it by hand on Linux.
 
 ### Security
+- Lockfile: `mcp` SDK and the CA certificate bundle bumped to their patched releases for published security advisories.
 - Lockfile: transitive HTTP and JWT libraries bumped to their patched releases for published security advisories. Installs from the index already resolve the patched versions.
 
 ## [0.1.4] — 2026-08-21
