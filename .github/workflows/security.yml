@@ -9,7 +9,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   schedule:
-    - cron: '27 4 * * 1'  # weekly Mon
+    - cron: '27 4 * * 5'  # weekly Fri
   workflow_dispatch:
 
 permissions: {}
