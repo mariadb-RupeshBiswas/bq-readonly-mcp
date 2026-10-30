@@ -5,7 +5,7 @@ name: scorecard
 on:
   branch_protection_rule:
   schedule:
-    - cron: '32 5 * * 1'  # weekly Mon
+    - cron: '32 5 * * 5'  # weekly Fri
   push:
     branches: [main]
   workflow_dispatch:
